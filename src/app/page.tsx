@@ -586,6 +586,65 @@ ls .build/release/`} />
               </div>
             </section>
 
+            {/* teste real - stardew */}
+            <section className="space-y-4">
+              <h2 className="flex items-center gap-2 text-xl font-bold">
+                <Gamepad2 className="h-5 w-5 text-amber-400" /> Teste real: GIF de Stardew Valley otimizado
+              </h2>
+              <Card className="border-zinc-800 bg-zinc-900/60">
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-start gap-6 sm:flex-row">
+                    <div className="flex shrink-0 flex-col items-center gap-2">
+                      <div
+                        className="rounded-xl border-2 border-zinc-700 bg-zinc-950 p-1 shadow-[0_0_24px_rgba(52,211,153,0.15)]"
+                        aria-hidden
+                      >
+                        <img
+                          src="/stardew-display.gif"
+                          alt="GIF de Stardew Valley otimizado para o display de 128x128 do teclado"
+                          width={128}
+                          height={128}
+                          className="rounded-lg"
+                          style={{ imageRendering: "pixelated" }}
+                        />
+                      </div>
+                      <span className="font-mono text-[10px] text-zinc-500">prévia 128×128</span>
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-3">
+                      <p className="text-sm leading-relaxed text-zinc-300">
+                        Um GIF de <strong className="text-zinc-100">Stardew Valley</strong> foi
+                        submetido ao teste: 128×128, 260 frames @ 50 fps, ~1 MB. Rodamos a
+                        receita otimizada e o resultado manteve o visual idêntico com{" "}
+                        <strong className="text-emerald-400">3,3× menos dados</strong> pro
+                        upload HID:
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3 text-xs">
+                          <p className="mb-1 font-semibold text-rose-400">Original ❌</p>
+                          <p className="text-zinc-400">260 frames · 50 fps · 1,0 MB</p>
+                          <p className="text-zinc-500">payload RGB565: ~8,1 MB → 2.080 pacotes HID</p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs">
+                          <p className="mb-1 font-semibold text-emerald-400">Otimizado ✅</p>
+                          <p className="text-zinc-400">78 frames · 15 fps · 370 KB</p>
+                          <p className="text-zinc-500">payload RGB565: ~2,4 MB → 624 pacotes HID</p>
+                        </div>
+                      </div>
+                      <CodeBlock
+                        code={`ffmpeg -i stardew.gif -vf "fps=15,scale=128:128:flags=neighbor,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer:bayer_scale=4" -loop 0 stardew_display.gif`}
+                      />
+                      <p className="text-xs leading-relaxed text-zinc-500">
+                        Mesma duração de loop (5,2s), pixel art intacta (dithering bayer
+                        combina com sprites), e o display tocará igual — painéis TFT dessa
+                        classe raramente passam de 20–30 fps reais, então 50 fps é peso
+                        morto. <strong className="text-zinc-400">15 fps é o sweet spot.</strong>
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
             {/* fontes */}
             <section className="space-y-4">
               <h2 className="text-xl font-bold">Onde achar GIFs bons</h2>
