@@ -493,6 +493,48 @@ export default function Home() {
               ))}
             </div>
 
+            {/* atalhos de hardware */}
+            <Card className="border-zinc-800 bg-zinc-900/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between flex-wrap gap-2 text-lg">
+                  <span className="flex items-center gap-2.5">
+                    <Keyboard className="h-5 w-5 text-amber-400" /> Atalhos de RGB pelo hardware
+                  </span>
+                  <SectionBadge>funcionam SEM o receiver 2.4G</SectionBadge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  O painel RGB do driver só responde via receiver 2.4G (usage page 0xFF59) —
+                  mas o teclado tem atalhos Fn nativos que funcionam em qualquer modo,
+                  inclusive só no cabo:
+                </p>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {[
+                    ["Fn + \\", "Alterna o modo de iluminação (cicla até o Estático; no fim, desliga)"],
+                    ["Fn + Tab", "Cicla a cor da luz (no modo estático, vá até o branco)"],
+                    ["Fn + ↑ / ↓", "Aumenta / diminui o brilho"],
+                    ["Fn + ← / →", "Diminui / aumenta a velocidade dos efeitos dinâmicos"],
+                    ["Fn + B", "Checa a bateria (a porcentagem acende nas teclas)"],
+                    ["Fn + Esc (3s)", "Restaura a iluminação padrão de fábrica"],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3.5 py-2.5">
+                      <kbd className="shrink-0 rounded-md border border-zinc-600 border-b-2 bg-zinc-800 px-2 py-1 font-mono text-xs font-semibold text-emerald-300">
+                        {k}
+                      </kbd>
+                      <span className="text-xs text-zinc-300 leading-snug">{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Dica: pra branco estático perfeito sem dongle — <kbd className="rounded border border-zinc-700 bg-zinc-800 px-1 font-mono text-[10px]">Fn + \</kbd> até
+                  o modo estático, depois <kbd className="rounded border border-zinc-700 bg-zinc-800 px-1 font-mono text-[10px]">Fn + Tab</kbd> até
+                  acertar a cor branca. O restante (Game Mode, response level, sleep) continua
+                  exigindo o receiver.
+                </p>
+              </CardContent>
+            </Card>
+
             <Card className="border-zinc-800 bg-zinc-900/60">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2.5 text-lg">

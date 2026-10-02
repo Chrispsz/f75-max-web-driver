@@ -73,3 +73,20 @@ Work Log:
 Stage Summary:
 - Correção importante: swift NÃO está nos repos oficiais do Arch/CachyOS — caminho certo é AUR swift-bin (ou tarball manual swift.org)
 - Guia atualizado na página (passo 1 + troubleshooting)
+
+---
+Task ID: 5
+Agent: Z.ai Code (main)
+Task: Responder dúvidas sobre controle de RGB (só via 2.4G? pela telinha?) e objetivo "LED branco estático"; usuário confirmou upload do GIF com sucesso (78 frames, 625 blocos, slot 1).
+
+Work Log:
+- Log do usuário confirmou: todos os 8 endpoints HID wired visíveis (0xff13 e 0xff68 inclusos), upload do stardew-display.gif concluído (625 blocos = cálculo batendo)
+- Screenshot do app mostrou: receptor 2.4G "Não conectado" → painel RGB/Desempenho todo desabilitado; Cor fixa já branca; Suspensão em 1 min
+- PESQUISA: confirmei atalhos de hardware do F75 (mechanicalkeyboard.net + aulakeyboard.com + aulastar.com): Fn+\ cicla efeito, Fn+Tab cicla cor, Fn+↑/↓ brilho, Fn+←/→ velocidade, Fn+B checa bateria, Fn+Esc 3s factory reset da luz
+- Adicionei card "Atalhos de RGB pelo hardware" na aba Config Perfeita com os 6 atalhos em kbd styling + dica do branco estático sem dongle
+- Lint limpo, browser verificado (card renderiza com kbd chips, sem erros de console)
+
+Stage Summary:
+- Resposta: SIM, RGB pelo driver é exclusivo do receiver 2.4G (usage page 0xFF59); a telinha é display-only (não controla RGB)
+- Caminho pro branco estático: (A) pluga dongle → painel destrava → já estava configurado (Estático/branco) → Aplicar perfil RGB; (B) sem dongle: Fn+\ até estático + Fn+Tab até branco
+- Bônus sugerido: Suspensão 1 min → 5-10 min; Fn+B funciona sem dongle pra bateria
