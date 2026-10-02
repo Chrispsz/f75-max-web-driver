@@ -90,3 +90,18 @@ Stage Summary:
 - Resposta: SIM, RGB pelo driver é exclusivo do receiver 2.4G (usage page 0xFF59); a telinha é display-only (não controla RGB)
 - Caminho pro branco estático: (A) pluga dongle → painel destrava → já estava configurado (Estático/branco) → Aplicar perfil RGB; (B) sem dongle: Fn+\ até estático + Fn+Tab até branco
 - Bônus sugerido: Suspensão 1 min → 5-10 min; Fn+B funciona sem dongle pra bateria
+
+---
+Task ID: 5
+Agent: Z.ai Code (main)
+Task: Responder dúvida do usuário "mudei pra 2.4G e o teclado não funciona (pareamento?)" e documentar o diagnóstico no guia.
+
+Work Log:
+- Re-li README do repo via page_reader: sem procedimento de pareamento no app (pareamento é firmware/hardware); issues do repo não mencionam 2.4 (busca GitHub API retornou 0 resultados antes do rate limit)
+- Busquei o manual oficial Epomaker F75/F75 MAX: FN+R segurado = rematch do receiver 2.4G; FN+Q/W/E segurado = parear BT; FN+Esc segurado 3s = reset do teclado; segurar Fn mostra modo de conexão na telinha; modo selecionado por switch físico + tap Fn+R para reconectar
+- Adicionei item no topo do accordion TROUBLESHOOTING em src/app/page.tsx: "Mudei pra 2.4G e o teclado parou de funcionar (pareamento)" com checklist de 6 passos (lsusb 05ac:024f → Fn mostra modo → Fn+R 3s → bateria → porta USB 2.0 sem hub/USB3 → Fn+Esc reset)
+- bun run lint limpo; dev.log 200 OK sem erros; verificação no Agent Browser: tab Troubleshooting → acordeão expandido → CONTENT-OK (Fn+R por ~3s, 05ac:024f e Fn+Esc presentes no texto), zero erros de página
+
+Stage Summary:
+- Resposta-chave ao usuário: re-emparelhar com Fn+R segurado ~3s até o ícone RF piscar; conferir dongle no lsusb (05ac:024f); bateria baixa derruba wireless antes do cabo; evitar USB 3.0/hubs
+- Guia atualizado com o cenário mais urgente do usuário no topo do Troubleshooting

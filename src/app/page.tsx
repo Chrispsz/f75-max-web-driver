@@ -212,6 +212,10 @@ gifsicle -O3 -U input.gif "#0-29" -o display.gif  # só os 30 primeiros frames`;
 
 const TROUBLESHOOTING = [
   {
+    q: "Mudei pra 2.4G e o teclado parou de funcionar (pareamento)",
+    a: "Ordem de diagnóstico: (1) confirme que o dongle está plugado direto no PC e aparece no lsusb: `lsusb | grep -i 05ac` → deve listar 05ac:024f; (2) segure Fn — a telinha mostra o modo de conexão atual, confirme que está em 2.4G; (3) re-emparelhe segurando Fn+R por ~3s até o ícone RF piscar na tela — o dongle e o teclado se reconectam sozinhos em segundos (comando oficial 'rematch' do manual Epomaker); (4) bateria baixa derruba o wireless primeiro — deixe no cabo 20–30 min; (5) evite portas USB 3.0 e hubs (interferência de 2.4 GHz) — use porta USB 2.0 ou extensor; (6) último recurso: Fn+Esc segurado 3s reseta o teclado, depois repita Fn+R. No Linux o dongle é HID genérico — se digita, já era: o card '2.4G receiver' do app acende e libera RGB/bateria/Game Mode.",
+  },
+  {
     q: "Teclado conectado mas o app não detecta",
     a: "Abra o painel de diagnóstico de endpoints do app — é a primeira coisa a checar. Depois: use uma porta USB direta (não hub), rode `lsusb | grep -iE '0c45|05ac'` e confirme que as regras udev foram instaladas + você replugou os cabos depois do `udevadm trigger`. No Wayland (padrão do CachyOS) o uaccess funciona com sessão ativa — se estiver logado via SSH/GDM direto, logue na sessão gráfica.",
   },
