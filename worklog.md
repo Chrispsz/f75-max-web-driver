@@ -57,3 +57,19 @@ Stage Summary:
 - Resposta: NÃO precisa refazer — conversão por descarte de frames mantém frames restantes como cópias exatas
 - Arquivo final: /stardew-display.gif (256 cores, 0,6% diff médio vs original)
 - Payload final pro teclado: ~2,4 MB → 624 pacotes HID (−70% vs original)
+
+---
+Task ID: 4
+Agent: Z.ai Code (main)
+Task: Corrigir comando de instalação do Swift no guia (pacote swift não existe nos repos oficiais do Arch).
+
+Work Log:
+- Usuário colou o comando do passo 1; verifiquei archlinux.org: extra/x86_64/swift retorna 404 e busca por "swift" só acha python-swiftclient (OpenStack, não relacionado)
+- Corrigido passo 1: pacman só para git/make/gtk4/hidapi/pkgconf; Swift via AUR (paru -S swift-bin) + swift --version de checagem
+- Corrigido também item de troubleshooting "swift não encontrado"
+- Nota adicionada: swift-bin baixa ~800 MB do toolchain oficial swift.org; sem AUR helper → makepkg -si manual
+- Lint limpo + verificação no browser (passo 1 renderiza corrigido, sem erros de console)
+
+Stage Summary:
+- Correção importante: swift NÃO está nos repos oficiais do Arch/CachyOS — caminho certo é AUR swift-bin (ou tarball manual swift.org)
+- Guia atualizado na página (passo 1 + troubleshooting)

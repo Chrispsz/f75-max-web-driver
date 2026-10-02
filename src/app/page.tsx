@@ -26,9 +26,9 @@ const INSTALL_STEPS: {
 }[] = [
   {
     title: "1. Instale as dependências",
-    desc: "O app Linux é escrito em Swift 6 + GTK4 e fala com o teclado via hidapi (hidraw). No CachyOS/Arch tudo vem do pacman:",
-    code: "sudo pacman -S --needed git make swift gtk4 hidapi pkgconf",
-    note: "O pacote `swift` está no repositório extra do Arch/CachyOS. Se o pacman não encontrar, instale via AUR: paru -S swift-bin",
+    desc: "O app Linux é escrito em Swift 6 + GTK4 e fala com o teclado via hidapi (hidraw). Atenção: o Swift NÃO está nos repos oficiais do Arch — só ele vem do AUR:",
+    code: "# dependências normais (pacman):\nsudo pacman -S --needed git make gtk4 hidapi pkgconf\n\n# Swift via AUR (paru já vem no CachyOS; alternativa: yay):\nparu -S swift-bin\n\n# confere antes de compilar:\nswift --version",
+    note: "`swift-bin` do AUR empacota o toolchain oficial da swift.org (6.x) — primeiro build do AUR demora e baixa ~800 MB. Sem AUR helper? git clone https://aur.archlinux.org/swift-bin.git && cd swift-bin && makepkg -si",
     icon: <Download className="h-5 w-5" />,
   },
   {
@@ -233,7 +233,7 @@ const TROUBLESHOOTING = [
   },
   {
     q: "make linux-build falha: swift não encontrado",
-    a: "O projeto exige toolchain Swift 6. No CachyOS: sudo pacman -S swift. Se não estiver nos mirrors: paru -S swift-bin (AUR). Confirme com `swift --version` antes de compilar.",
+    a: "O `swift` NÃO está nos repos oficiais do Arch — instale do AUR: paru -S swift-bin (ou faça download manual do tarball em swift.org e adicione ao PATH). Confirme com `swift --version` mostrando 6.x antes de compilar.",
   },
 ];
 
