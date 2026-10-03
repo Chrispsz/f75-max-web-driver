@@ -105,3 +105,23 @@ Work Log:
 Stage Summary:
 - Resposta-chave ao usuário: re-emparelhar com Fn+R segurado ~3s até o ícone RF piscar; conferir dongle no lsusb (05ac:024f); bateria baixa derruba wireless antes do cabo; evitar USB 3.0/hubs
 - Guia atualizado com o cenário mais urgente do usuário no topo do Troubleshooting
+
+---
+Task ID: 6
+Agent: Z.ai Code (main)
+Task: Fazer loop perfeito no GIF do Stardew Valley do usuário e documentar a técnica no guia.
+
+Work Log:
+- Analisei upload/stardew_display_256c.gif e upload/stardew.gif (128x128, 260 frames @ 50fps): movimento médio entre frames 2,87, diff último frame vs primeiro 9,7 = pulo visível no loop
+- Busca exaustiva de ciclo no original (períodos 6-120 frames, busca de par inicio->fim com pose idêntica): nenhum corte cíclico existe (melhor par f12->f193 diff 5,8) — a gravação nunca volta exatamente à pose inicial
+- Identifiquei a cena via contact sheets: pesca no Stardew (idle -> arremesso -> espera com barra de tempo -> fisgada com barra verde de captura -> recolher -> idle)
+- Testei 3 abordagens: (A) loop só do trecho pescando com freeze-fade: artefato (barra de captura no tail); (B) cena completa com dissolve @50fps: seam 2,54 pós-conversão; (C) vencedora: seleção 15fps em Python + dissolve dos últimos 10 frames @15fps (0,67s) de volta pro frame 0 + palettegen/paletteuse 256 cores
+- Resultado final: 78 frames, 481 KB, 5,2s, seam = 0.000 (último frame pixel-idêntico ao primeiro), movimento médio 2,79 (idêntico ao corpo)
+- Salvei upload/stardew_display_loop.gif e public/stardew-display-loop.gif
+- Atualizei src/app/page.tsx: nova seção "Loop perfeito" na tab GIFs (3 técnicas: corte cíclico, ping-pong, crossfade) + CodeBlock com script loop_perfeito.py genérico copiável; seção Teste real com 3 cards (Original/Otimizado/Loop perfeito) e preview trocada pro GIF com loop; texto do payload atualizado (625 blocos mantidos)
+- bun run lint limpo; verificação no Agent Browser: tab GIFs & Display -> seção loop, técnicas, script, card de comparação e img naturalWidth=128 OK, zero erros de página; screenshot de confirmação
+
+Stage Summary:
+- Arquivo entregue: public/stardew-display-loop.gif (loop matematicamente perfeito, seam 0,0 vs 9,7 do original) — usuário só precisa reenviar pro slot 1 no app
+- Decisão técnica: crossfade/freeze-fade no final (últimos 12% dos frames dissolvendo pro 1º frame) como técnica universal, documentada com script Python no guia
+- Payload do teclado inalterado (78 frames x 32 KB = mesmos 625 blocos de 4 KB)

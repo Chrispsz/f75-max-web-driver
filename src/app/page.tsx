@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Copy, Terminal, Keyboard, Palette, Wrench, Gamepad2, Battery, Clock, Image as ImageIcon, Sparkles, Download, Usb, ShieldCheck, Zap, MonitorPlay } from "lucide-react";
+import { Check, Copy, Terminal, Keyboard, Palette, Wrench, Gamepad2, Battery, Clock, Image as ImageIcon, Sparkles, Download, Usb, ShieldCheck, Zap, MonitorPlay, Repeat } from "lucide-react";
 
 /* ---------------------------------- data --------------------------------- */
 
@@ -209,6 +209,28 @@ gifsicle -O3 --colors 64 -i input.gif -o display.gif
 
 # Remove frames extras (menos peso pro upload HID):
 gifsicle -O3 -U input.gif "#0-29" -o display.gif  # só os 30 primeiros frames`;
+
+const LOOP_SCRIPT = `#!/usr/bin/env python3
+# loop_perfeito.py — dissolve o final de volta pro 1º frame = loop sem pulo visível
+# uso: python3 loop_perfeito.py entrada.gif saida.gif
+# deps: sudo pacman -S python-pillow python-numpy
+from PIL import Image, ImageSequence
+import numpy as np, sys
+
+src, dst = sys.argv[1], sys.argv[2]
+im = Image.open(src)
+dur = im.info.get("duration", 100)  # ms por frame
+fr = np.stack([np.asarray(f.convert("RGB"), np.float32) for f in ImageSequence.Iterator(im)])
+L, T = len(fr), max(1, int(len(fr) * 0.12))  # dissolve = 12% da duração
+out = []
+for i in range(L):
+    f = fr[i]
+    if i >= L - T:
+        w = (i - (L - T) + 1) / T
+        f = (1 - w) * f + w * fr[0]  # mistura progressiva pro 1º frame
+    out.append(Image.fromarray(np.clip(f, 0, 255).astype(np.uint8)))
+out[0].save(dst, save_all=True, append_images=out[1:], loop=0, duration=dur)
+print(f"ok: {L} frames, dissolve de {T} — último frame == primeiro (seam 0)")`;
 
 const TROUBLESHOOTING = [
   {
@@ -632,6 +654,53 @@ ls .build/release/`} />
               </div>
             </section>
 
+            {/* loop perfeito */}
+            <section className="space-y-4">
+              <h2 className="flex items-center gap-2 text-xl font-bold">
+                <Repeat className="h-5 w-5 text-sky-400" /> Loop perfeito: fim que emenda no começo
+              </h2>
+              <div className="grid gap-5 lg:grid-cols-2">
+                <Card className="border-zinc-800 bg-zinc-900/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Qual técnica usar?</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3 text-sm text-zinc-300 leading-relaxed">
+                      <li>
+                        <strong className="text-emerald-400">1. Corte cíclico</strong> — se a animação é
+                        periódica (fogueira, onda, moeda girando), ache o frame que mais se parece
+                        com o 1º e corte ali. Resultado ideal, mas nem todo GIF tem ciclo.
+                      </li>
+                      <li>
+                        <strong className="text-amber-400">2. Ping-pong</strong> — repete os frames ao
+                        contrário (ezgif.com/reverse-gif → opção ping-pong). Sempre funciona, mas o
+                        movimento volta de ré — ok pra ondas e órbitas, esquisito pra personagens.
+                      </li>
+                      <li>
+                        <strong className="text-sky-400">3. Crossfade (a receita ao lado)</strong> —
+                        dissolve o final de volta pro 1º frame. Funciona com QUALQUER GIF: o último
+                        frame vira idêntico ao primeiro (emenda invisível). Foi o que aplicamos no
+                        GIF do Stardew.
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card className="border-zinc-800 bg-zinc-900/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Modo nerd — script Python</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <CodeBlock code={LOOP_SCRIPT} />
+                    <p className="text-xs text-zinc-500">
+                      Salve como loop_perfeito.py e rode em cima do GIF já otimizado (128×128, 15
+                      fps). O dissolve de 12% dura ~0,6s em um GIF de 5s — suficiente pra emendar
+                      sem parecer pausa.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
             {/* teste real - stardew */}
             <section className="space-y-4">
               <h2 className="flex items-center gap-2 text-xl font-bold">
@@ -646,15 +715,15 @@ ls .build/release/`} />
                         aria-hidden
                       >
                         <img
-                          src="/stardew-display.gif"
-                          alt="GIF de Stardew Valley otimizado para o display de 128x128 do teclado"
+                          src="/stardew-display-loop.gif"
+                          alt="GIF de Stardew Valley com loop perfeito para o display de 128x128 do teclado"
                           width={128}
                           height={128}
                           className="rounded-lg"
                           style={{ imageRendering: "pixelated" }}
                         />
                       </div>
-                      <span className="font-mono text-[10px] text-zinc-500">prévia 128×128</span>
+                      <span className="font-mono text-[10px] text-zinc-500">prévia 128×128 · loop perfeito 🔄</span>
                     </div>
                     <div className="min-w-0 flex-1 space-y-3">
                       <p className="text-sm leading-relaxed text-zinc-300">
@@ -664,7 +733,7 @@ ls .build/release/`} />
                         <strong className="text-emerald-400">3,3× menos dados</strong> pro
                         upload HID:
                       </p>
-                      <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="grid gap-2 sm:grid-cols-3">
                         <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3 text-xs">
                           <p className="mb-1 font-semibold text-rose-400">Original ❌</p>
                           <p className="text-zinc-400">260 frames · 50 fps · 1,0 MB</p>
@@ -673,7 +742,12 @@ ls .build/release/`} />
                         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs">
                           <p className="mb-1 font-semibold text-emerald-400">Otimizado ✅</p>
                           <p className="text-zinc-400">78 frames · 15 fps · 503 KB · 256 cores</p>
-                          <p className="text-zinc-500">payload RGB565: ~2,4 MB → 624 pacotes HID (−70%)</p>
+                          <p className="text-zinc-500">payload RGB565: ~2,4 MB → 625 pacotes HID (−70%)</p>
+                        </div>
+                        <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3 text-xs">
+                          <p className="mb-1 font-semibold text-sky-400">Loop perfeito 🔄</p>
+                          <p className="text-zinc-400">78 frames · 15 fps · 481 KB</p>
+                          <p className="text-zinc-500">emenda: diff 9,7 → 0,0 (invisível) · mesmo payload</p>
                         </div>
                       </div>
                       <CodeBlock
@@ -684,7 +758,8 @@ ffmpeg -i stardew.gif -vf "fps=15,scale=128:128:flags=neighbor,split[a][b];[a]pa
                         Não precisa refazer do zero: converter por descarte de frames mantém
                         cada frame restante como cópia exata (validado: diff médio de 0,6%,
                         PSNR ~38 dB — imperceptível em pixel art). O payload do teclado
-                        depende só de frames × 32 KB, então paleta maior não custa nada.
+                        depende só de frames × 32 KB, então paleta maior não custa nada — e o
+                        loop perfeito também: continua 78 frames, mesmos 625 blocos.
                         Painéis TFT dessa classe raramente passam de 20–30 fps reais —
                         <strong className="text-zinc-400"> 15 fps é o sweet spot.</strong>
                       </p>
