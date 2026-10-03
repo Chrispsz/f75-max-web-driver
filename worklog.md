@@ -125,3 +125,21 @@ Stage Summary:
 - Arquivo entregue: public/stardew-display-loop.gif (loop matematicamente perfeito, seam 0,0 vs 9,7 do original) — usuário só precisa reenviar pro slot 1 no app
 - Decisão técnica: crossfade/freeze-fade no final (últimos 12% dos frames dissolvendo pro 1º frame) como técnica universal, documentada com script Python no guia
 - Payload do teclado inalterado (78 frames x 32 KB = mesmos 625 blocos de 4 KB)
+
+---
+Task ID: 7
+Agent: Z.ai Code (main)
+Task: Recomendar a cor de LED com melhor contraste para o colorway cinza/branco do teclado do usuário (foto do Ajjaz AK820 enviada como referência) e documentar no guia.
+
+Work Log:
+- Extraí a paleta real da foto via k-means (8 clusters): colorway 100% neutro — #DFDEDF (cinza claro), #AFAEB0 (cinza médio), #363636 (legends grafite), case #FEFEFE, zero saturação
+- Simulei 12 cores de LED com modelo físico (cap reflete igual em todo espectro; tint = cap × LED): medi ΔE76 glow-vs-caps, chroma C* do cap tingido e ΔE legenda-vs-cap sob o LED
+- Resultados: roxo ΔE 85 / vermelho 82 / verde 80 = máximo pop mas tingem os caps (C* 70+); branco frio ΔE 25 = some contra o case branco (C* 2,3); ciano ΔE 46 e teal 44 = sweet spot (glow visível, caps neutros)
+- Rodei duas renderizações de comparação (8 LEDs) — a final com modelo realista pra caps sólidos sem shine-through (topo 82% ambiente + 18% LED, halo de borda, glow full nos gaps): public/led-compare.png
+- Recomendação final: 🥇 ciano gelo #41E8FF (pop alto, caps neutros, combina com a água do GIF Stardew) · 🥈 ice blue #96D2FF · 🥉 roxo #AF69FF · ❌ branco frio (a escolha anterior do usuário = pior contraste pra esse colorway); dica de brightness 50-70%
+- Adicionei seção "Qual cor de RGB pro colorway cinza/branco?" no fim da tab Config Perfeita (imagem comparativa + 4 presets com hex + dica de brilho)
+- bun run lint limpo; verificação no Agent Browser: tab Config Perfeita -> seção, 4 presets e imagem (naturalWidth 650) OK, zero erros
+
+Stage Summary:
+- Veredito com dados: ciano gelo #41E8FF é a melhor cor possível pro colorway cinza/branco; branco estático (desejo anterior) é o pior pra contraste nessa combinação
+- Artefatos: public/led-compare.png + seção nova no guia com presets copiáveis pro Fixed Color do app (via receiver 2.4G)

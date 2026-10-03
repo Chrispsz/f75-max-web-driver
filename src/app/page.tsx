@@ -589,6 +589,58 @@ ls .build/release/`} />
                 </p>
               </CardContent>
             </Card>
+
+            {/* rgb por colorway */}
+            <section className="space-y-4">
+              <h2 className="flex items-center gap-2 text-xl font-bold">
+                <Palette className="h-5 w-5 text-sky-400" /> Qual cor de RGB pro colorway cinza/branco?
+              </h2>
+              <Card className="border-zinc-800 bg-zinc-900/60">
+                <CardContent className="p-6 space-y-5">
+                  <p className="text-sm text-zinc-300 leading-relaxed">
+                    Em keycaps <strong className="text-zinc-100">100% neutros</strong> (cinza claro{" "}
+                    <code className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-xs text-zinc-300">#DFDEDF</code>,{" "}
+                    cinza médio{" "}
+                    <code className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-xs text-zinc-300">#AFAEB0</code>,{" "}
+                    case branco), o cap reflete todos os comprimentos de onda igualmente — então a
+                    cor do LED decide o contraste. Medimos ΔE (distância perceptual) de 12 cores
+                    contra o colorway e renderizamos a simulação:
+                  </p>
+                  <div className="overflow-hidden rounded-xl border border-zinc-700">
+                    <img
+                      src="/led-compare.png"
+                      alt="Simulação de oito cores de LED sobre keycaps cinza e branco"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      { hex: "#41E8FF", name: "🥇 Ciano gelo", desc: "pop alto, caps seguem neutros", border: "border-sky-500/40" },
+                      { hex: "#96D2FF", name: "🥈 Ice blue", desc: "clean premium, contraste médio", border: "border-zinc-700" },
+                      { hex: "#AF69FF", name: "🥉 Roxo", desc: "contraste máximo, tinge laterais", border: "border-zinc-700" },
+                      { hex: "#F0F4F8", name: "❌ Branco frio", desc: "some contra o case branco (ΔE 25)", border: "border-rose-500/30" },
+                    ].map((c) => (
+                      <div key={c.hex} className={`rounded-lg border ${c.border} bg-zinc-950/60 p-3`}>
+                        <div className="flex items-center gap-2.5">
+                          <span className="h-8 w-8 shrink-0 rounded-md border border-white/10" style={{ backgroundColor: c.hex }} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
+                            <p className="font-mono text-[11px] text-zinc-500">{c.hex}</p>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-zinc-400 leading-relaxed">{c.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs leading-relaxed text-zinc-500">
+                    Dica de brilho: caps claros devolvem muita luz — em{" "}
+                    <strong className="text-zinc-400">50–70% de brightness</strong> o glow fica
+                    definido sem lavar os keycaps. E ciano combina com o GIF de Stardew (água) que
+                    já tá no display 😉 Configura no app via receiver 2.4G: Lighting → Fixed Color.
+                  </p>
+                </CardContent>
+              </Card>
+            </section>
           </TabsContent>
 
           {/* ============================== GIFS =============================== */}
