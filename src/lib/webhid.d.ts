@@ -72,11 +72,27 @@ interface HIDDeviceRequestOptions {
   filters?: HIDDeviceFilter[];
 }
 
+interface HIDConnectionEvent extends Event {
+  readonly device: HIDDevice;
+}
+
 interface HID extends EventTarget {
-  onconnect: ((this: HID, ev: Event) => void) | null;
-  ondisconnect: ((this: HID, ev: Event) => void) | null;
+  onconnect: ((this: HID, ev: HIDConnectionEvent) => void) | null;
+  ondisconnect: ((this: HID, ev: HIDConnectionEvent) => void) | null;
   getDevices(): Promise<HIDDevice[]>;
   requestDevice(options: HIDDeviceRequestOptions): Promise<HIDDevice[]>;
+  addEventListener(
+    type: "connect" | "disconnect",
+    listener: (event: HIDConnectionEvent) => void,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+  removeEventListener(
+    type: "connect" | "disconnect",
+    listener: (event: HIDConnectionEvent) => void,
+    options?: boolean | EventListenerOptions
+  ): void;
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
 }
 
 interface Navigator {

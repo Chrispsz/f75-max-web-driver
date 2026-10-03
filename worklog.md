@@ -194,3 +194,24 @@ Stage Summary:
 - Driver web funcional em beta: mesmo protocolo do nativo, sem compilação, 100% local no navegador
 - Pipeline de encode validado byte-idêntico ao nativo com o GIF real do usuário
 - Limitações honestas documentadas no guia (só Chromium, sem notificação de bateria/autostart)
+
+---
+Task ID: 11
+Agent: Z.ai Code (main)
+Task: Reconstruir o driver web como ferramenta standalone perfeita (fix do botão Aplicar), logs completos no F12, fix Alt+Tab/atalhos GNOME e diagnóstico systemd.
+
+Work Log:
+- Diagnóstico do beta: botões travados por `!connected?.dongle` sem explicação na UI (usuário não sabia por quê) + bug real de campos (`wired`/`wiredRaw`) vs chaves de role (`wiredCommand`) que quebrava require()/status
+- Re-estudou o código-fonte nativo (LinuxHIDBackend/WirelessAulaDevice/AulaCore/DisplayEncoder.swift via /tmp): descoberta-chave = Game Mode tem flags INDEPENDENTES disableAltTab/disableAltF4/disableWin → causa provável do Alt+Tab morto do usuário
+- Criado src/lib/f75/logger.ts: logger central espelhado no console (prefixo [F75], níveis, hexdumps com offset+ASCII via groupCollapsed) + ring buffer pra UI com export
+- Criado src/lib/f75/protocol.ts: builders byte a byte (wired 64B, wireless 32B c/ checksum sum-8, battery query, gameModeReport c/ flags independentes), describeWired/describeWireless legíveis, encoder RGB565 + decode de volta (prévia "cores da telinha"), decodeAnimatedGif (WebCodecs), generateAnimation procedural (bola ciano/plasma gelo, loop perfeito)
+- Criado src/lib/f75/driver.ts: F75Driver WebHID c/ estratégias de wire (feature id=pacote[0] ↔ verbatim id=0 conforme descriptor), listeners persistentes de input report (bateria em tempo real + ACKs contados), hotplug auto-rebin (eventos connect/disconnect), reconnectSaved() via getDevices, uploadDisplay c/ progresso/ETA/cancelamento, factoryReset completo, modo simulação que roda o MESMO código de protocolo
+- Criado src/components/driver/F75DriverTool.tsx + driver-cards.tsx: ferramenta standalone (header/status, Conexão c/ 3 chips de endpoint + bateria, RGB c/ presets, Desempenho & Modo Jogo c/ flags independentes + "Desbloquear Alt+Tab agora", Display c/ prévia animada + relógio auto 60s + factory reset 2-passos, Teste de Teclas, Sistema CachyOS, Log c/ filtros/busca/copiar)
+- page.tsx virou shell de 2 views: Driver (default) ↔ Guia; guia ganhou botões "Driver Web" (hero + sticky) e tab "Driver Web" com card de ponte; beta antigo (driver-web.tsx, aula-protocol.ts, aula-webhid.ts) deletado
+- Fix TS: getServerSnapshot no useSyncExternalStore, HIDConnectionEvent no webhid.d.ts, VideoFrame duration
+- Validação Agent Browser: sim mode → todos botões destravam; RGB aplicado (hexdump conferido: 05 10 00 01 41 e8 ff…aa 55, ck ok); unlock enviou altTab=0/altF4=0/win=0; upload animação gerada 361 blocos c/ progresso 33%→90%→"concluído em 10.7s"; relógio (payload 10/03 13:44:58 dow=6 = correto p/ Sat Oct 3 2026); key tester capturou PrintScreen/Shift/Tab; 91 logs [F75] no console; navegação Driver↔Guia↔ponte↔Driver OK; footer sticky desktop+mobile (bottom=vh); icon.svg 200; tsc+lint limpos
+
+Stage Summary:
+- Botão Aplicar: causa raiz resolvida (estado de conexão explícito nos chips + hint de texto em cada botão travado + sim mode pra testar tudo)
+- Alt+Tab: diagnóstico novo = flags do firmware (disableAltTab/AltF4/Win) que o nativo liga junto c/ Game Mode; driver web permite desbloquear individualmente (melhoria sobre o nativo)
+- Ferramenta standalone em / com logs completos no F12 ([F75] + hexdumps) e no painel — pronta pra iterar com hardware real

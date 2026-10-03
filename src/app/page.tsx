@@ -14,7 +14,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Copy, Terminal, Keyboard, Palette, Wrench, Gamepad2, Battery, Clock, Image as ImageIcon, Sparkles, Download, Usb, ShieldCheck, Zap, MonitorPlay, Repeat, Trash2, RotateCcw, Cable, Cpu } from "lucide-react";
-import DriverWeb from "@/components/driver-web";
+import F75DriverTool from "@/components/driver/F75DriverTool";
 
 /* ---------------------------------- data --------------------------------- */
 
@@ -349,6 +349,15 @@ function SectionBadge({ children }: { children: React.ReactNode }) {
 /* ----------------------------------- page --------------------------------- */
 
 export default function Home() {
+  const [view, setView] = useState<"driver" | "guia">("driver");
+  return view === "driver" ? (
+    <F75DriverTool onOpenGuide={() => setView("guia")} />
+  ) : (
+    <GuideView onOpenDriver={() => setView("driver")} />
+  );
+}
+
+function GuideView({ onOpenDriver }: { onOpenDriver: () => void }) {
   const [checked, setChecked] = useState<boolean[]>(() => CHECKLIST.map(() => false));
   const done = checked.filter(Boolean).length;
   const pct = Math.round((done / CHECKLIST.length) * 100);
@@ -408,7 +417,10 @@ export default function Home() {
             perfeitos. Comandos copiáveis, dicas de RGB, bateria e troubleshooting.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild className="bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-semibold">
+            <Button onClick={onOpenDriver} className="bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-semibold">
+              <Cable className="mr-2 h-4 w-4" /> Abrir Driver Web
+            </Button>
+            <Button asChild variant="outline" className="border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-emerald-400">
               <a href="#instalacao"><Download className="mr-2 h-4 w-4" /> Começar instalação</a>
             </Button>
             <Button asChild variant="outline" className="border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-emerald-400">
@@ -426,6 +438,9 @@ export default function Home() {
           </span>
           <Progress value={pct} className="h-2 flex-1 bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-amber-400" />
           <span className="text-xs font-mono text-emerald-400 shrink-0">{pct}%</span>
+          <Button size="sm" onClick={onOpenDriver} className="h-7 gap-1.5 bg-emerald-500 px-2.5 text-xs text-zinc-950 hover:bg-emerald-400">
+            <Cable className="h-3.5 w-3.5" /> Driver Web
+          </Button>
         </div>
       </div>
 
@@ -442,7 +457,7 @@ export default function Home() {
               <ImageIcon className="h-4 w-4" /> GIFs & Display
             </TabsTrigger>
             <TabsTrigger value="driver" className="gap-1.5 data-[state=active]:bg-zinc-950 data-[state=active]:text-emerald-400">
-              <Cable className="h-4 w-4" /> Driver Web <Badge className="ml-1 border border-amber-500/30 bg-amber-500/15 px-1.5 py-0 text-[10px] text-amber-400">beta</Badge>
+              <Cable className="h-4 w-4" /> Driver Web
             </TabsTrigger>
             <TabsTrigger value="troubleshooting" className="gap-1.5 data-[state=active]:bg-zinc-950 data-[state=active]:text-emerald-400">
               <Wrench className="h-4 w-4" /> Troubleshooting
@@ -972,68 +987,25 @@ ffmpeg -i stardew.gif -vf "fps=15,scale=128:128:flags=neighbor,split[a][b];[a]pa
             </section>
           </TabsContent>
 
-          {/* =========================== DRIVER WEB ============================ */}
-          <TabsContent value="driver" className="mt-8 space-y-10">
-            <section className="space-y-4">
-              <h2 className="flex items-center gap-2 text-xl font-bold">
-                <Cable className="h-5 w-5 text-emerald-400" /> Driver Web (WebHID) — sem compilar nada
-              </h2>
-              <p className="max-w-3xl text-sm text-zinc-400 leading-relaxed">
-                Pegamos o código-fonte do driver nativo e portamos o protocolo inteiro pra TypeScript rodando
-                <strong className="text-zinc-200"> 100% no seu navegador</strong> via WebHID — o Chrome fala
-                direto com o hidraw, pelos mesmos endpoints (0xFF13 comandos, 0xFF68 display, 0xFF60 receiver).
-                Mesmos pacotes byte a byte, zero Swift, zero AUR, zero compilação.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { t: "Requisito único", d: "Chrome, Chromium, Edge, Brave ou Opera (WebHID). Firefox/Safari não suportam. Regras udev já instaladas valem pro Chrome.", i: <ShieldCheck className="h-4 w-4 text-emerald-400" /> },
-                  { t: "100% local", d: "O JS roda na sua máquina e fala com o teclado direto — nada sai do navegador, sem servidor, sem driver de kernel.", i: <ShieldCheck className="h-4 w-4 text-sky-400" /> },
-                  { t: "Paridade com o nativo", d: "RGB, bateria, response, sleep, Game Mode, relógio, upload de display com progresso e factory reset.", i: <Cpu className="h-4 w-4 text-amber-400" /> },
-                ].map((c) => (
-                  <Card key={c.t} className="border-zinc-800 bg-zinc-900/60">
-                    <CardContent className="p-4">
-                      <p className="flex items-center gap-2 text-sm font-semibold text-zinc-100">{c.i} {c.t}</p>
-                      <p className="mt-2 text-xs text-zinc-500 leading-relaxed">{c.d}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-
-            <DriverWeb />
-
-            <section className="space-y-4">
-              <h2 className="text-xl font-bold">O que a versão web faz melhor (e o que ainda prefiro no nativo)</h2>
-              <div className="grid gap-5 lg:grid-cols-2">
-                <Card className="border-emerald-500/20 bg-emerald-500/5">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-emerald-400">✨ Melhorias da versão web</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2 text-sm text-zinc-300 leading-relaxed">
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />Zero compilação — nada de AUR swift-bin (~800 MB)</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />Roda em qualquer distro com Chrome — não só Ubuntu/Fedora</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />Preset “Ciano gelo #41E8FF” com um clique</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />Prévia do 1º frame antes de upar + log em tempo real</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />Decodificador GIF moderno (WebCodecs) com delays corretos</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-                <Card className="border-amber-500/20 bg-amber-500/5">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-amber-400">⚠ Onde o nativo ainda leva</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2 text-sm text-zinc-300 leading-relaxed">
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />Só navegadores Chromium — o nativo é independente de browser</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />Notificação de bateria baixa e autostart são exclusivos do app</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />Multi-idioma completo e painel de diagnóstico de endpoints mais detalhado</li>
-                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />Protocolo baseado em engenharia reversa — se uma firmware mudar algo, o nativo pode ser corrigido primeiro</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
+          {/* ========================== DRIVER WEB ============================= */}
+          <TabsContent value="driver" className="mt-8 space-y-6">
+            <Card className="border-emerald-500/30 bg-emerald-500/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg text-emerald-400">
+                  <Cable className="h-5 w-5" /> O driver web virou uma ferramenta independente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-zinc-300 leading-relaxed">
+                <p>
+                  A versão beta embutida aqui foi <strong className="text-zinc-100">aposentada</strong>: agora o driver é uma ferramenta
+                  standalone, com protocolo completo do driver nativo, logs byte a byte (no painel e no console F12), modo simulação,
+                  teste de teclas, flags independentes de Game Mode (Alt+Tab / Alt+F4 / Win) e diagnóstico de sistema.
+                </p>
+                <Button onClick={onOpenDriver} className="bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-semibold">
+                  <Cable className="mr-2 h-4 w-4" /> Abrir o F75 Max Web Driver
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ========================== TROUBLESHOOTING ========================== */}
