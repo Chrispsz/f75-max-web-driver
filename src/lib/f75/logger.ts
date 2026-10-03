@@ -21,7 +21,11 @@ const LEVEL_META: Record<LogLevel, { console: "log" | "info" | "warn" | "error" 
   info: { console: "log", style: "color:#a1a1aa", tag: "info" },
   ok: { console: "log", style: "color:#34d399;font-weight:bold", tag: " ok " },
   warn: { console: "warn", style: "color:#fbbf24;font-weight:bold", tag: "warn" },
-  err: { console: "error", style: "color:#fb7185;font-weight:bold", tag: "FAIL" },
+  // NOTA: erros do driver vão como console.warn de propósito — o dev overlay do
+  // Next.js intercepta console.error e abre um modal vermelho pra CADA falha de
+  // hardware (que é esperada/iterável). O nível err continua vermelho no painel
+  // e no F12 (via estilo %c), só não estoura overlay.
+  err: { console: "warn", style: "color:#fb7185;font-weight:bold", tag: "FAIL" },
   cmd: { console: "info", style: "color:#38bdf8", tag: ">>TX" },
   rx: { console: "info", style: "color:#c084fc", tag: "<<RX" },
   debug: { console: "debug", style: "color:#52525b", tag: "dbg " },

@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DisplayCard, KeyTesterCard, LogsCard, PerformanceCard, RgbCard, SystemCard, type PerfState, type PreparedUpload } from "@/components/driver/driver-cards";
+import { DisplayCard, DiagnosticsCard, KeyTesterCard, LogsCard, PerformanceCard, RgbCard, SystemCard, type PerfState, type PreparedUpload } from "@/components/driver/driver-cards";
 import { F75Driver, F75Error, type DriverStatus } from "@/lib/f75/driver";
 import { f75log } from "@/lib/f75/logger";
 import {
@@ -41,6 +41,7 @@ export default function F75DriverTool({ onOpenGuide }: { onOpenGuide: () => void
 
   const [supported, setSupported] = useState<boolean | null>(null);
   const [inIframe, setInIframe] = useState(false);
+  const [driverReady, setDriverReady] = useState(false);
   const [status, setStatus] = useState<DriverStatus>({ sim: false, wiredCommand: false, wiredDisplay: false, dongle: false });
   const [busy, setBusy] = useState<string | null>(null);
   const [battery, setBattery] = useState<number | null>(null);
@@ -67,6 +68,7 @@ export default function F75DriverTool({ onOpenGuide }: { onOpenGuide: () => void
   useEffect(() => {
     const driver = new F75Driver();
     driverRef.current = driver;
+    setDriverReady(true);
     driver.onStatus = (s) => setStatus(s);
     driver.onBattery = (p) => setBattery(p);
     setSupported(F75Driver.supported);
@@ -309,8 +311,10 @@ export default function F75DriverTool({ onOpenGuide }: { onOpenGuide: () => void
           <CardContent className="space-y-4">
             <p className="text-xs leading-relaxed text-zinc-400">
               No seletor do navegador vão aparecer <strong className="text-zinc-200">várias entradas</strong> &ldquo;Aula F75 Max&rdquo; (uma por
-              interface HID) e, se plugado, o receiver &ldquo;Aula F75 Max 2.4G&rdquo;. <strong className="text-zinc-200">Selecione todas</strong> —
-              o driver usa 0xFF13 (comando cabo), 0xFF68 (display cabo) e 0xFF60 (receiver). As regras udev que você já instalou valem pro Chrome.
+              interface HID) e, se plugado, o receiver &ldquo;Aula F75 Max 2.4G&rdquo;. <strong className="text-zinc-200">Selecione todas</strong> — o
+              driver abre TODAS as interfaces do receiver (o canal certo do RGB é o 0xFF60; vincular a errada era a causa do erro
+              &ldquo;Failed to write the report&rdquo;), além de 0xFF13 (comando cabo) e 0xFF68 (display cabo). As regras udev que você já instalou valem pro
+              Chrome.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={connect} disabled={busy !== null || status.sim} className="h-9 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
@@ -382,6 +386,8 @@ export default function F75DriverTool({ onOpenGuide }: { onOpenGuide: () => void
           <KeyTesterCard />
           <SystemCard />
         </div>
+
+        <DiagnosticsCard driver={driverReady ? driverRef.current : null} />
 
         <LogsCard />
 

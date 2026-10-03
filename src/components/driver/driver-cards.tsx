@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
+  Activity,
   Camera,
   Check,
   ClipboardCopy,
@@ -47,6 +48,7 @@ import {
   type RgbSettings,
 } from "@/lib/f75/protocol";
 import { f75log } from "@/lib/f75/logger";
+import type { DriverDiagnostics, F75Driver } from "@/lib/f75/driver";
 
 /* ------------------------------- copy block ------------------------------- */
 
@@ -825,6 +827,105 @@ export function LogsCard() {
               </p>
             ))
           )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------- diagnóstico ------------------------------- */
+
+export function DiagnosticsCard({ driver }: { driver: F75Driver | null }) {
+  const [diag, setDiag] = useState<DriverDiagnostics | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!driver) return;
+    const tick = () => setDiag(driver.getDiagnostics());
+    tick();
+    const id = setInterval(tick, 800);
+    return () => clearInterval(id);
+  }, [driver]);
+
+  const copyAll = async () => {
+    if (!diag) return;
+    const text = [
+      "=== F75 WEB DRIVER · DIAGNÓSTICO ===",
+      `gerado: ${new Date().toISOString()}`,
+      `sim: ${diag.sim}`,
+      "",
+      "-- endpoints --",
+      ...diag.endpoints.map(
+        (e) =>
+          `[${e.role}] ${e.product} ${e.vid}:${e.pid} · pages ${e.usagePages} · ids ${e.hasNumberedIds ? "numerados" : "ausentes"} · out ${e.outputIds} (max ${e.maxOutput}B) · feat ${e.featureIds} (max ${e.maxFeature}B) · aberto=${e.opened}`
+      ),
+      "",
+      "-- última transmissão (matriz de estratégias) --",
+      diag.lastTx
+        ? `${diag.lastTx.label}\n` + diag.lastTx.attempts.map((a) => `  ${a.target} · ${a.mode} · id=${a.reportId} · ${a.wire} → ${a.result}`).join("\n")
+        : "  (nenhuma ainda)",
+      "",
+      "-- log completo --",
+      f75log.export(),
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <Card className="border-zinc-800 bg-zinc-900/60">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+          <Activity className="h-4 w-4 text-emerald-400" /> Diagnóstico HID
+          <Badge variant="outline" className="border-zinc-700 text-[10px] font-normal text-zinc-500">
+            interfaces abertas + matriz de TX
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {diag && diag.endpoints.length > 0 ? (
+          <div className="scrollbar-thin max-h-64 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-[11px] leading-relaxed">
+            {diag.endpoints.map((e) => (
+              <div key={e.key} className="mb-2 border-b border-zinc-800/60 pb-2 last:mb-0 last:border-0 last:pb-0">
+                <p className="text-emerald-300">
+                  [{e.role}] {e.product} <span className="text-zinc-500">{e.vid}:{e.pid}</span>
+                </p>
+                <p className="text-zinc-400">
+                  usage pages {e.usagePages} · report IDs <span className={e.hasNumberedIds ? "text-amber-300" : "text-zinc-300"}>{e.hasNumberedIds ? "NUMERADOS" : "ausentes"}</span>
+                </p>
+                <p className="text-zinc-500">
+                  output [{e.outputIds}] max {e.maxOutput}B · feature [{e.featureIds}] max {e.maxFeature}B · aberto={String(e.opened)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500">
+            {diag?.sim ? "Modo simulação ativo — sem interfaces reais abertas." : "Nenhuma interface aberta ainda — conecte o teclado/dongle pra ver os descritores HID reais aqui."}
+          </p>
+        )}
+
+        {diag?.lastTx && diag.lastTx.attempts.length > 0 && (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 font-mono text-[11px] leading-relaxed">
+            <p className="mb-1 text-sky-300">Última TX: {diag.lastTx.label}</p>
+            {diag.lastTx.attempts.map((a, i) => (
+              <p key={i} className={a.result.startsWith("✔") ? "text-emerald-300" : a.result.startsWith("✗") ? "text-rose-300" : "text-zinc-400"}>
+                {a.target} · {a.mode} · id={a.reportId} · {a.wire} → {a.result}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={copyAll} className="h-7 gap-1.5 border-zinc-700 bg-transparent px-2 text-xs text-zinc-300 hover:bg-zinc-800">
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <ClipboardCopy className="h-3.5 w-3.5" />} copiar diagnóstico completo
+          </Button>
+          <span className="text-[11px] text-zinc-600">cole aqui no chat pra gente corrigir o protocolo com dados reais do seu hardware.</span>
         </div>
       </CardContent>
     </Card>

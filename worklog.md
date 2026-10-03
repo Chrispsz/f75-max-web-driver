@@ -215,3 +215,24 @@ Stage Summary:
 - Botão Aplicar: causa raiz resolvida (estado de conexão explícito nos chips + hint de texto em cada botão travado + sim mode pra testar tudo)
 - Alt+Tab: diagnóstico novo = flags do firmware (disableAltTab/AltF4/Win) que o nativo liga junto c/ Game Mode; driver web permite desbloquear individualmente (melhoria sobre o nativo)
 - Ferramenta standalone em / com logs completos no F12 ([F75] + hexdumps) e no painel — pronta pra iterar com hardware real
+
+---
+Task ID: 12
+Agent: Z.ai Code (main)
+Task: Corrigir "NotAllowedError: Failed to write the report" no TX do driver web (RGB via receiver) e blindar a ferramenta com matriz de estratégias descriptor-aware + diagnóstico completo na UI.
+
+Work Log:
+- Baixou de novo os fontes nativos (jsDelivr) e confirmou a wire real: LinuxHIDBackend.openDongleRaw varre TODAS as interfaces 05AC:024F ordenando usagePage 0xFF60 → maior output; RGB/perf/bateria = hid_write cru com fallback [0x00]+pacote; cabo = feature reports 64B no 0xFF13; display = writes 4096B no 0xFF68
+- Baixou kernel hidraw.c + hid_connection.cc/linux.cc do Chromium e fechou o modelo: Chrome SEMPRE prefixa o byte de report ID (sendReport → write([id]+payload)), exige has_report_id === (id!==0), kernel rejeita count<2 e count>4096, interrupt OUT não valida ID, SET_REPORT valida+stripa
+- CAUSA RAIZ: v1 vinculava a PRIMEIRA interface do receiver como "dongle" (podia ser a de teclado, sem output 32B) e enviava sendReport(0,...)/(packet[0],...) sem consultar o descritor → kernel/Chrome rejeitavam → NotAllowedError
+- driver.ts v2: bindDevices abre TODAS as interfaces do receiver (ordenadas 0xFF60→maxOutput, 0xFF60 = preferida), summarizeDevice computa hasNumberedIds/maxOutput/maxFeature/outputIds/featureIds por interface, buildAttempts gera matriz de estratégias equivalentes às rotas raw/prefixed do nativo respeitando o descritor, emit() loga cada tentativa (modo/id/wire/erro), tx() varre candidatos×modos com cache da vencedora por família de comando, F75Error final com resumo das tentativas
+- Display: writeDisplayChunk v2 — interface numerada = sendReport(chunk[0], chunk[1..]) recria a wire nativa 4096B byte a byte; sem IDs = stream em pedaços min(maxOut,4095) com id=0 (Chrome sempre injeta o byte de ID; kernel limita 4096); bateria com waiter novo por tentativa; input de teclado/mouse do receiver filtrado do log
+- logger.ts: nível err espelhado como console.warn (dev overlay do Next intercepta console.error e abria modal vermelho pra cada falha de hardware esperada)
+- driver-cards.tsx: novo DiagnosticsCard (interfaces abertas com descritores reais, matriz da última TX colorida, botão "copiar diagnóstico completo" = endpoints + tentativas + log inteiro); F75DriverTool integra o card e explica a causa do erro antigo no texto de conexão
+- Fix sim mode: status getter agora reporta todos os endpoints em simulação (botões destravam de novo)
+- Validação: tsc limpo em src/, lint limpo, dev.log 200 OK; Agent Browser — sim: RGB aplicado (05 10 00 01 41 e8 ff…aa 55, ck ok), unlock Alt+Tab (flags 0), upload 361 blocos + commit, card diagnóstico em sim, zero erros de página; guia ↔ driver com 3 pontes; footer/header sticky desktop 1280 + mobile 390
+
+Stage Summary:
+- RGB pelo dongle agora: (1) usa a interface 0xFF60 de verdade, (2) respeita report IDs do descritor real, (3) cai na estratégia vencedora cacheada, (4) se falhar, o log F12 + DiagnosticsCard mostram a matriz completa
+- Caminho de iteração com hardware real: usuário clica "copiar diagnóstico completo" e cola no chat → ajustamos o protocolo com dados do teclado dele
+- Limitação documentada: WebHID injeta o byte de report ID na wire — upload de display em interface SEM IDs usa stream fatiado (4095B) em vez do bloco cru do nativo; interface numerada reproduz a wire nativa exata
