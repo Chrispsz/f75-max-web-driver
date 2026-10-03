@@ -24,11 +24,18 @@
  *
  * A matriz de estratégias abaixo tenta as equivalentes na ordem que o
  * DESCRITOR real sugere, loga cada tentativa (F12 / painel) e cacheia a
- * vencedora de forma GLOBAL por (endpoint, modo, id, tamanho): um único
- * sucesso calibra RGB, performance e bateria ao mesmo tempo. Ao conectar o
- * receiver, uma auto-calibração silenciosa (query de bateria, igual ao
- * nativo) valida a rota ANTES do primeiro clique em Aplicar. Cada tentativa
- * fracassada aparece no log com o motivo.
+ * vencedora. DETALHE CRÍTICO (v4): o firmware do receiver IGNORA rotas
+ * erradas em silêncio — "aceito pelo SO" NÃO prova que o teclado processou
+ * o pacote. Por isso a rota do receiver é validada por SONDA: um sweep de
+ * rotas candidatas com a query de bateria, onde a RESPOSTA REAL do teclado
+ * (input report 0x20 0x01 .. %) confirma a rota certa. A rota validada
+ * fica cacheada e passa a ser usada por RGB, desempenho e bateria.
+ *
+ * Contabilidade real da wire no Linux (hidraw):
+ *   sendReport(0, N)  → Chrome escreve [0x00]+N · kernel usbhid REMOVE o
+ *   0x00 (usbhid_output_report/usbhid_set_raw_report) → N bytes na wire.
+ *   Ou seja: sendReport(0, pacote32) = 32B na wire = hid_write nativo.
+ *   NUNCA prefixe 0x00 manualmente — vira 33B na wire e o firmware descarta.
  */
 
 import {
@@ -95,6 +102,7 @@ export interface DriverDiagnostics {
   sim: boolean;
   endpoints: EndpointDiag[];
   lastTx: { label: string; attempts: TxAttemptDiag[] } | null;
+  dongleRoute: string | null;
 }
 
 /* ------------------------------ resumo HID ------------------------------- */
@@ -169,6 +177,14 @@ interface TxSpec {
 
 type TxAttemptLog = TxAttemptDiag;
 
+/** Rota de TX do receiver validada por RESPOSTA real do teclado (probe). */
+interface DongleRoute {
+  endpointKey: string;
+  label: string; // ex.: "0xff60 · output 32B"
+  mode: WireMode;
+  pad: number; // 0 = payload cru; N = padTo(payload, N)
+}
+
 interface Endpoint {
   kind: "real";
   key: string;
@@ -209,6 +225,8 @@ export class F75Driver {
   private hidListenersAttached = false;
   private wireCache = new Map<string, { endpointKey: string; spec: TxSpec }>();
   private lastTx: { label: string; attempts: TxAttemptLog[] } | null = null;
+  private dongleRoute: DongleRoute | null = null;
+  private probing = false;
 
   onStatus: ((s: DriverStatus) => void) | null = null;
   onBattery: ((percent: number | null) => void) | null = null;
@@ -262,6 +280,7 @@ export class F75Driver {
     this.dongleInterfaces = [];
     this.dongle = undefined;
     this.wireCache.clear();
+    this.dongleRoute = null;
   }
 
   /* ------------------------------- conexão -------------------------------- */
@@ -376,8 +395,11 @@ export class F75Driver {
       if (!(await this.openDevice(device))) continue;
       const ep = this.makeEndpoint(device, "dongle");
       this.dongleInterfaces.push(ep);
+      // Interfaces vendor (0xFF59/0xFF60) podem trazer ACKs/respostas como
+      // input report SEM report ID (id=0x00) — não filtrar como ruído.
+      const vendor = ep.summary.usagePages.includes(AULA.dongleCommandPage) || ep.summary.usagePages.includes(AULA.dongleRawPage);
       ep.device.addEventListener("inputreport", (ev) =>
-        this.handleInput("dongle", ev.reportId, new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength))
+        this.handleInput("dongle", ev.reportId, new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength), vendor)
       );
     }
     if (this.dongleInterfaces.length > 0) {
@@ -446,7 +468,7 @@ export class F75Driver {
 
   /* ------------------------------ input reports ---------------------------- */
 
-  private handleInput(role: EndpointRole, reportId: number, data: Uint8Array): void {
+  private handleInput(role: EndpointRole, reportId: number, data: Uint8Array, vendor = false): void {
     if (role === "dongle") {
       const percent = parseBatteryReport(reportId, data);
       if (percent !== null) {
@@ -455,6 +477,14 @@ export class F75Driver {
         this.batteryWaiters = [];
         waiters.forEach((resolve) => resolve(percent));
         this.onBattery?.(percent);
+        return;
+      }
+      // Interfaces vendor do receiver: qualquer input que não é bateria é
+      // evidência (ACK/status do firmware) — loga sempre, até com id 0x00.
+      if (vendor) {
+        f75log.rx(
+          `RX receiver (id=0x${hex2(reportId)}, ${data.length}B): ${Array.from(data.subarray(0, Math.min(data.length, 16)), (b) => hex2(b)).join(" ")}${data.length > 16 ? " …" : ""}`
+        );
         return;
       }
       // teclado/mouse padrão do receiver — ruído de digitação, não loga
@@ -552,7 +582,7 @@ export class F75Driver {
             reportId: 0,
             payloadLen: packet.length,
             padded: false,
-            note: `id=0 + pacote ${packet.length}B → ${wire(packet.length)}B na wire (device sem report IDs — rota prefixed do nativo)`,
+            note: `id=0 + pacote ${packet.length}B → wire real ${packet.length}B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)`,
           });
         }
         if (max > packet.length && max <= 4095) {
@@ -697,6 +727,28 @@ export class F75Driver {
         attempts: [{ target: "sim", mode: "sim", reportId: "—", wire: `${packet.length}B`, result: "✔ ok (sim)" }],
       };
       return;
+    }
+
+    // Fast path do receiver: rota já validada por RESPOSTA do teclado (probe).
+    // "Aceito pelo SO" não prova processamento — só a sonda prova. Se a rota
+    // calibrada deixar de ser aceita pelo SO, limpa e cai na varredura abaixo.
+    if (role === "dongle" && this.dongleRoute) {
+      const r = this.dongleRoute;
+      const ep = this.dongleInterfaces.find((e) => e.key === r.endpointKey);
+      if (ep) {
+        const logs: TxAttemptLog[] = [];
+        const ok = await this.sendRoute(
+          { ep, mode: r.mode, pad: r.pad, label: r.label, note: "rota calibrada por resposta" },
+          packet,
+          label,
+          dump,
+          logs
+        );
+        this.lastTx = { label, attempts: logs };
+        if (ok) return;
+        f75log.warn("Rota calibrada deixou de ser aceita pelo SO — re-sondando com a matriz completa…");
+      }
+      this.dongleRoute = null;
     }
 
     const candidates = this.capableCandidates(role, packet, modes);
@@ -948,8 +1000,184 @@ export class F75Driver {
     f75log.ok("✅ Factory reset completo — replugue o cabo pra religar a telinha limpa.");
   }
 
-  /* --------------------------- receiver: bateria ---------------------------- */
+  /* ------------------ receiver: rotas, sonda e bateria --------------------- */
 
+  /**
+   * Rotas candidatas do receiver, em ordem de prioridade. A 1ª equivale ao
+   * hid_write cru do nativo na 0xFF60; as demais cobrem a interface de
+   * comando 0xFF59 (com padding ao tamanho nativo de 64 B) e o caminho de
+   * controle SET_REPORT (feature). O firmware ignora rotas erradas em
+   * silêncio — só a SONDA (resposta real de bateria) escolhe a certa.
+   */
+  private routeCandidates(): { ep: Endpoint; mode: WireMode; pad: number; label: string; note: string }[] {
+    const rank = (ep: Endpoint) =>
+      ep.summary.usagePages.includes(0xff60) ? 0 : ep.summary.usagePages.includes(0xff59) ? 1 : 2;
+    const ifaces = [...this.dongleInterfaces].sort((a, b) => rank(a) - rank(b));
+    const routes: { ep: Endpoint; mode: WireMode; pad: number; label: string; note: string }[] = [];
+    for (const ep of ifaces) {
+      if (ep.summary.hasNumberedIds) continue;
+      const page = ep.summary.usagePages.includes(0xff60)
+        ? "0xff60"
+        : ep.summary.usagePages.includes(0xff59)
+          ? "0xff59"
+          : `pg:${ep.summary.usagePages.map((p) => `0x${p.toString(16)}`).join("/")}`;
+      if (ep.summary.maxOutput >= 32) {
+        routes.push({ ep, mode: "output", pad: 0, label: `${page} · output ${ep.summary.maxOutput}B`, note: "output cru — equivalente exato ao hid_write do nativo" });
+      }
+      if (ep.summary.maxOutput >= 64) {
+        routes.push({ ep, mode: "output", pad: 64, label: `${page} · output padded 64B`, note: "output com padding ao tamanho nativo da interface de comando" });
+      }
+      if (ep.summary.maxFeature >= 32) {
+        routes.push({ ep, mode: "feature", pad: 0, label: `${page} · feature ${ep.summary.maxFeature}B`, note: "SET_REPORT via endpoint de controle" });
+      }
+    }
+    return routes;
+  }
+
+  /**
+   * Envia por uma rota concreta com contabilidade REAL da wire: no Linux,
+   * sendReport(0, N) vira write([0x00]+N) no hidraw e o kernel usbhid REMOVE
+   * o 0x00 → N bytes chegam ao device. Nunca prefixar 0x00 manualmente.
+   */
+  private async sendRoute(
+    r: { ep: Endpoint; mode: WireMode; pad: number; label: string; note: string },
+    packet: Uint8Array,
+    label: string,
+    dump: boolean,
+    logs: TxAttemptLog[]
+  ): Promise<boolean> {
+    const payload = r.pad > packet.length ? padTo(packet, r.pad) : packet;
+    const wireTxt =
+      r.mode === "output"
+        ? `${payload.length}B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)`
+        : `${payload.length}B via SET_REPORT no endpoint de controle (id 0x00 stripado pelo kernel)`;
+    logs.push({ target: r.label, mode: r.mode, reportId: "0x00", wire: `${payload.length}B`, result: "…" });
+    f75log.cmd(`TX ${r.mode} · ${label} · ${r.label} · ${payload.length}B payload → ${wireTxt}`);
+    if (dump) f75log.dump(payload, `TX ${r.mode} · ${label} · ${r.label}`);
+    else f75log.debug(`TX ${r.mode} · ${label} · primeiros bytes: ${Array.from(payload.subarray(0, 12), (b) => hex2(b)).join(" ")}`);
+    try {
+      if (r.mode === "output") await r.ep.device.sendReport(0, payload);
+      else await r.ep.device.sendFeatureReport(0, payload);
+      logs[logs.length - 1].result = "✔ aceito pelo SO";
+      f75log.debug(`✔ ${r.mode} aceito pelo SO · ${label} · ${r.label} (processamento pelo teclado só a sonda prova)`);
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      logs[logs.length - 1].result = `✗ ${msg}`;
+      f75log.warn(`${r.mode} falhou · ${label} · ${r.label} · ${msg}`);
+      return false;
+    }
+  }
+
+  /** Espera resposta de bateria — registrar ANTES do send (sem corrida). */
+  private batteryWaiter(timeoutMs: number): Promise<number | null> {
+    return new Promise((resolve) => {
+      this.batteryWaiters.push(resolve);
+      setTimeout(() => {
+        const i = this.batteryWaiters.indexOf(resolve);
+        if (i >= 0) {
+          this.batteryWaiters.splice(i, 1);
+          resolve(null);
+        }
+      }, timeoutMs);
+    });
+  }
+
+  /**
+   * SONDA de rotas do receiver: envia a query de bateria por cada rota
+   * candidata e espera a RESPOSTA real do teclado. A rota que responder é
+   * a certa — fica cacheada e passa a valer para RGB/desempenho/bateria.
+   * Se nenhuma responder, o teclado provavelmente não está falando com o
+   * receiver (dormindo, fora do 2.4G ou sem pareamento Fn+R).
+   */
+  private async probeDongleRoutes(verbose: boolean): Promise<number | null> {
+    if (this.probing) return null;
+    this.probing = true;
+    try {
+      // Rota já validada — usa direto, sem re-sweep.
+      if (this.dongleRoute) {
+        const r = this.dongleRoute;
+        const ep = this.dongleInterfaces.find((e) => e.key === r.endpointKey);
+        if (ep) {
+          const logs: TxAttemptLog[] = [];
+          const wait = this.batteryWaiter(400);
+          await this.sendRoute(
+            { ep, mode: r.mode, pad: r.pad, label: r.label, note: "rota calibrada" },
+            batteryQueryPacket(false, 32),
+            "probe bateria",
+            false,
+            logs
+          );
+          const percent = await wait;
+          this.lastTx = { label: "probe bateria (rota calibrada)", attempts: logs };
+          if (percent !== null) return percent;
+          if (verbose) f75log.warn("Rota calibrada não recebeu resposta agora — teclado dormindo? Aperte uma tecla e tente de novo.");
+          return null;
+        }
+        this.dongleRoute = null;
+      }
+
+      const routes = this.routeCandidates();
+      if (routes.length === 0) {
+        if (verbose) f75log.warn("Receiver sem interface utilizável — nenhuma declara output/feature ≥ 32 B.");
+        return null;
+      }
+      if (verbose) f75log.info(`🔎 Sondando ${routes.length} rota(s) do receiver com a query de bateria — a resposta real do teclado valida a rota…`);
+
+      const pkt = batteryQueryPacket(false, 32);
+      const logs: TxAttemptLog[] = [];
+      for (const r of routes) {
+        const wait = this.batteryWaiter(380); // waiter ANTES do send — sem corrida
+        await this.sendRoute(r, pkt, "probe bateria", false, logs);
+        const percent = await wait;
+        if (percent !== null) {
+          this.dongleRoute = { endpointKey: r.ep.key, label: r.label, mode: r.mode, pad: r.pad };
+          f75log.ok(
+            `✔ Rota do receiver VALIDADA por resposta do teclado: ${r.label} · ${r.mode}${r.pad ? ` padded ${r.pad}B` : ""} — bateria ${percent}%. RGB/desempenho/bateria usam esta rota.`
+          );
+          this.lastTx = { label: "probe de rotas (validada)", attempts: logs };
+          return percent;
+        }
+        if (verbose) f75log.debug(`Rota ${r.label} · ${r.mode}: aceita pelo SO, sem resposta do teclado — próxima…`);
+      }
+      this.lastTx = { label: "probe de rotas (sem resposta)", attempts: logs };
+      if (verbose)
+        f75log.warn(
+          "Nenhuma rota recebeu resposta do teclado. O receiver está ligado no PC, mas o teclado provavelmente NÃO está falando com ele: aperte qualquer tecla pra acordar, segure Fn pra ver o modo na telinha (precisa ser 2.4G) e re-emparelhe com Fn+R segurado ~3s se precisar."
+        );
+      return null;
+    } finally {
+      this.probing = false;
+    }
+  }
+
+  /** Label da rota calibrada — vai pro painel de diagnóstico. */
+  get dongleRouteLabel(): string | null {
+    const r = this.dongleRoute;
+    if (!r) return null;
+    return `${r.label} · ${r.mode}${r.pad ? ` padded ${r.pad}B` : ""} — validada por resposta do teclado`;
+  }
+
+  /**
+   * Auto-calibração ao vincular o receiver: roda a sonda de rotas em modo
+   * silencioso. Valida a rota ANTES do primeiro Aplicar e de quebra já
+   * traz a bateria se o teclado estiver acordado.
+   */
+  private async calibrateDongle(): Promise<void> {
+    if (this.simMode || this.dongleInterfaces.length === 0) return;
+    try {
+      const percent = await this.probeDongleRoutes(false);
+      if (percent !== null) this.onBattery?.(percent);
+      else f75log.debug("Sonda de rotas concluída sem resposta — RGB usará a melhor rota candidata; re-sonda a cada clique em bateria.");
+    } catch (err) {
+      f75log.warn(`Sonda de rotas do receiver falhou: ${err instanceof Error ? err.message : String(err)} — a matriz re-tenta no próximo comando.`);
+    }
+  }
+
+  /**
+   * Query de bateria pública: roda a sonda de rotas (que usa a PRÓPRIA
+   * resposta de bateria pra validar a rota de TX do receiver).
+   */
   async queryBattery(quiet = false): Promise<number | null> {
     if (this.simMode) {
       f75log.cmd("TX (sim) · battery query");
@@ -959,48 +1187,10 @@ export class F75Driver {
       return 87;
     }
     if (this.dongleInterfaces.length === 0) throw new F75Error(this.requireMessage("dongle"));
-    const preferred = this.dongle;
-    const maxOut = preferred?.summary.maxOutput ?? 32;
-    const lengths = [...new Set([Math.min(Math.max(maxOut, 32), 64), 33, 32])].filter((l) => l <= Math.max(maxOut, 32)).sort((a, b) => b - a);
-    if (!quiet) f75log.info(`🔋 Consultando bateria (tamanhos candidatos: ${lengths.join(", ")} B; output máximo declarado da interface preferida: ${maxOut} B)…`);
-
-    const waitBattery = () =>
-      new Promise<number | null>((resolve) => {
-        this.batteryWaiters.push(resolve);
-        setTimeout(() => {
-          const i = this.batteryWaiters.indexOf(resolve);
-          if (i >= 0) {
-            this.batteryWaiters.splice(i, 1);
-            resolve(null);
-          }
-        }, 250);
-      });
-
-    for (const length of lengths) {
-      for (const withId of [false, true]) {
-        await this.tx(batteryQueryPacket(withId, length), `battery query ${length}B id=${withId ? "sim" : "não"}`, "dongle", ["output", "feature"], false);
-        const percent = await waitBattery();
-        if (percent !== null) return percent;
-      }
-    }
-    if (!quiet) f75log.warn("Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).");
-    return null;
-  }
-
-  /**
-   * Auto-calibração do receiver — o nativo consulta a bateria ao abrir o
-   * dongle; aqui a query valida a rota de TX ANTES do primeiro comando real,
-   * de graça. Se a bateria responder, melhor ainda.
-   */
-  private async calibrateDongle(): Promise<void> {
-    if (this.simMode || this.dongleInterfaces.length === 0) return;
-    try {
-      const percent = await this.queryBattery(true);
-      if (percent !== null) f75log.ok(`Receiver calibrado — rota de TX validada e bateria em ${percent}%.`);
-      else f75log.debug("Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).");
-    } catch (err) {
-      f75log.warn(`Auto-calibração do receiver não conseguiu TX: ${err instanceof Error ? err.message : String(err)} — a matriz re-tenta no próximo comando.`);
-    }
+    if (!quiet) f75log.info("🔋 Consultando bateria — a resposta real do teclado valida a rota de TX do receiver.");
+    const percent = await this.probeDongleRoutes(!quiet);
+    if (percent !== null) this.onBattery?.(percent);
+    return percent;
   }
 
   /* ---------------------------- receiver: RGB ------------------------------- */
@@ -1063,6 +1253,6 @@ export class F75Driver {
     push(this.wiredCommand, "cabo · comando");
     push(this.wiredDisplay, "cabo · display");
     this.dongleInterfaces.forEach((ep, i) => push(ep, i === 0 ? "receiver · preferido" : `receiver · alt ${i}`));
-    return { sim: this.simMode, endpoints, lastTx: this.lastTx };
+    return { sim: this.simMode, endpoints, lastTx: this.lastTx, dongleRoute: this.dongleRouteLabel };
   }
 }

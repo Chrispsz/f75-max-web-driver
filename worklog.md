@@ -255,3 +255,28 @@ Stage Summary:
 - O site agora É o driver: app fullscreen estilo VIA/Wootility, minimalista, sem nenhum conteúdo de guia/OS
 - Motor TX v3 mais robusto: calibração automática ao conectar o receiver + cache global de rota vencedora — o clique em Aplicar usa a rota já validada (ataca o NotAllowedError residual por outro ângulo: calibração preventiva)
 - UX de driver de verdade: estado vivo em resumos mono, preview fiel RGB565, console embutido = F12, persistência de settings
+
+---
+Task ID: 14
+Agent: Z.ai Code (main)
+Task: "não funcionou aparentemente" — RGB "aplicado" pelo receiver mas teclado não muda nada (bateria também muda). Investigação profunda da wire real (Chromium + kernel Linux) e reprojeto do TX do receiver (v4) com sonda de rotas validada por resposta real.
+
+Work Log:
+- Decodificou o log do usuário: packet 0x05/0x0f byte-idêntico ao nativo (checksum 0x34 ok, AA55 ok), TX aceito pelo SO, device ignora tudo (RGB + bateria sem resposta)
+- Baixou e leu o código-fonte REAL de 3 camadas para fechar o modelo da wire:
+  · Chromium (hid_connection_impl.cc): Write() SEMPRE prepensa o byte de report ID (io_buffer[0]=report_id, mesmo id=0) → write() cru no hidraw
+  · Kernel hid-core/hidraw: hidraw_send_report (2≤count≤4096) → hid_hw_output_report → usbhid_output_report
+  · Kernel usbhid: usbhid_output_report E usbhid_set_raw_report fazem "if (buf[0]==0x0) {buf++;count--;}" — REMOVEM o 0x00 → sendReport(0, pkt32) = 32B reais na wire = hid_write nativo (Linux E macOS após fallback)
+- Conclusão-chave: a wire do web driver JÁ era byte-idêntica à do nativo; o problema NÃO é a wire — o firmware do receiver ignora rotas erradas em silêncio e "aceito pelo SO" não prova processamento; o tx() antigo parava na 1ª escrita aceita (0xFF60 output cru) e NUNCA testava 0xFF59 (64B), padding 64B ou SET_REPORT feature
+- driver.ts v4: nova máquina de rotas do receiver — routeCandidates() gera matriz priorizada (0xFF60 out cru → 0xFF59 out cru → 0xFF59 out padded 64B → 0xFF60/0xFF59 feature SET_REPORT), sendRoute() com contabilidade honesta da wire, probeDongleRoutes() = SONDA que envia query de bateria por cada rota esperando a RESPOSTA real (20 01 .. %) — a rota que responde é cacheada (dongleRoute) e passa a valer para RGB/desempenho/bateria (fast path no tx())
+- Fix de corrida: waiter de bateria agora registrado ANTES do send (antes registrava depois do await tx — resposta rápida podia ser perdida)
+- Fix de visibilidade: inputs das interfaces vendor (0xFF59/0xFF60) agora sempre logados (RX receiver hex) — antes o filtro de ruído descartava id=0x00 e podia esconder o ACK/resposta
+- queryBattery reescrita = sonda (verbose mostra cada rota tentada); calibrateDongle roda a sonda no bind; notas de log corrigidas (não diz mais "33B na wire" — wire real N B com explicação do strip do kernel)
+- UI: DevicePanel ganhou card "Rota de comando do receiver" com botão "Sondar rotas" + status da rota (verde quando validada por resposta); SystemPanel mostra "rota do receiver: ..." na tabela de interfaces; sidebar v4
+- Se nenhuma rota responder: mensagem clara e acionável (teclado não está falando com o receiver — acordar, conferir modo 2.4G segurando Fn, re-emparelhar Fn+R ~3s)
+- Validação: tsc limpo, lint limpo, HTTP 200; Agent Browser — app renderiza, sim mode destrava tudo, RGB/perf aplicam com hexdump ck=ok, console TX/RX visível, tabela Sistema ok, mobile 390px com pill nav + footer grudado (844/844), desktop 1440px footer 900/900, zero erros de página
+
+Stage Summary:
+- Causa raiz real esclarecida: não era mais o NotAllowedError (isso já tinha ido) — era rota não verificável: o driver aceitava a 1ª rota que o SO aceitava e o firmware descartava em silêncio
+- v4 = validação por EVIDÊNCIA (resposta de bateria) em vez de suposição — a rota certa é descoberta automaticamente, mesmo que o firmware deste receiver use 0xFF59/64B/SET_REPORT em vez de 0xFF60/32B
+- Caminho de iteração: usuário clica "Sondar rotas" com o teclado acordado no 2.4G → se validar, RGB funciona; se nada responder, o log diz exatamente o que conferir (Fn / Fn+R / acordar teclado)

@@ -103,37 +103,44 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
           </div>
 
           {diag && diag.endpoints.length > 0 ? (
-            <div className="scrollbar-thin overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left font-mono text-[11px]">
-                <thead>
-                  <tr className="text-zinc-600">
-                    <th className="pb-1.5 pr-3 font-medium">papel</th>
-                    <th className="pb-1.5 pr-3 font-medium">produto</th>
-                    <th className="pb-1.5 pr-3 font-medium">USB</th>
-                    <th className="pb-1.5 pr-3 font-medium">páginas</th>
-                    <th className="pb-1.5 pr-3 font-medium">IDs</th>
-                    <th className="pb-1.5 pr-3 font-medium">out</th>
-                    <th className="pb-1.5 font-medium">feat</th>
-                  </tr>
-                </thead>
-                <tbody className="text-zinc-400">
-                  {diag.endpoints.map((ep) => (
-                    <tr key={ep.key} className="border-t border-zinc-800/60">
-                      <td className="py-1.5 pr-3 text-emerald-400/90">{ep.role}</td>
-                      <td className="max-w-[140px] truncate py-1.5 pr-3" title={ep.product}>
-                        {ep.product}
-                      </td>
-                      <td className="py-1.5 pr-3 text-zinc-500">
-                        {ep.vid}:{ep.pid}
-                      </td>
-                      <td className="py-1.5 pr-3">{ep.usagePages}</td>
-                      <td className="py-1.5 pr-3">{ep.hasNumberedIds ? "numerados" : "—"}</td>
-                      <td className="py-1.5 pr-3">{ep.maxOutput > 0 ? `${ep.maxOutput}B` : "—"}</td>
-                      <td className="py-1.5">{ep.maxFeature > 0 ? `${ep.maxFeature}B` : "—"}</td>
+            <div className="space-y-2">
+              <div className="scrollbar-thin overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left font-mono text-[11px]">
+                  <thead>
+                    <tr className="text-zinc-600">
+                      <th className="pb-1.5 pr-3 font-medium">papel</th>
+                      <th className="pb-1.5 pr-3 font-medium">produto</th>
+                      <th className="pb-1.5 pr-3 font-medium">USB</th>
+                      <th className="pb-1.5 pr-3 font-medium">páginas</th>
+                      <th className="pb-1.5 pr-3 font-medium">IDs</th>
+                      <th className="pb-1.5 pr-3 font-medium">out</th>
+                      <th className="pb-1.5 font-medium">feat</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-zinc-400">
+                    {diag.endpoints.map((ep) => (
+                      <tr key={ep.key} className="border-t border-zinc-800/60">
+                        <td className="py-1.5 pr-3 text-emerald-400/90">{ep.role}</td>
+                        <td className="max-w-[140px] truncate py-1.5 pr-3" title={ep.product}>
+                          {ep.product}
+                        </td>
+                        <td className="py-1.5 pr-3 text-zinc-500">
+                          {ep.vid}:{ep.pid}
+                        </td>
+                        <td className="py-1.5 pr-3">{ep.usagePages}</td>
+                        <td className="py-1.5 pr-3">{ep.hasNumberedIds ? "numerados" : "—"}</td>
+                        <td className="py-1.5 pr-3">{ep.maxOutput > 0 ? `${ep.maxOutput}B` : "—"}</td>
+                        <td className="py-1.5">{ep.maxFeature > 0 ? `${ep.maxFeature}B` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {diag.dongleRoute && (
+                <p className="font-mono text-[10px] leading-relaxed text-emerald-400/90" title="Rota validada pela resposta real do teclado na sonda de bateria">
+                  rota do receiver: {diag.dongleRoute}
+                </p>
+              )}
             </div>
           ) : (
             <p className="font-mono text-[11px] text-zinc-600">{diag?.sim ? "simulação — sem hardware" : "nenhuma interface aberta"}</p>

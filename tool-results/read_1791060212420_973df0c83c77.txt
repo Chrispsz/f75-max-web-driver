@@ -1,0 +1,300 @@
+     1→     1→[17:20:13.699] INFO  F75 Max Web Driver pronto — 100% local, nada sai do navegador. Logs completos espelhados no console (F12 → filtro [F75]).
+     2→     2→[17:20:13.733] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+     3→     3→[17:20:13.734] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+     4→     4→[17:20:13.736] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+     5→     5→[17:20:13.739] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+     6→     6→[17:20:13.739] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+     7→     7→[17:20:13.740] OK    Dispositivos já autorizados rebinados automaticamente.
+     8→     8→[17:20:14.619] INFO  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+     9→     9→[17:20:16.760] INFO  Seletor retornou 4 interface(s) — vinculando as do F75 Max.
+    10→    10→[17:20:16.760] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+    11→    11→[17:20:16.762] INFO  🔋 Consultando bateria (tamanhos candidatos: 32 B; output máximo declarado da interface preferida: 32 B)…
+    12→    12→[17:20:16.762] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    13→    13→[17:20:16.763] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+    14→    14→[17:20:16.780] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+    15→    15→[17:20:17.031] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    16→    16→[17:20:17.031] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+    17→    17→[17:20:17.033] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+    18→    18→[17:20:17.284] WARN  Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).
+    19→    19→[17:20:19.144] INFO  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #41E8FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+    20→    20→[17:20:19.145] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    21→    21→[17:20:19.145] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+    22→    22→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+    23→    23→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+    24→    24→[17:20:19.165] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+    25→    25→[17:20:19.216] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    26→    26→[17:20:19.217] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+    27→    27→0x0000  05 10 00 01 41 e8 ff 00  00 00 00 00 03 02 00 00  |····A···········|
+    28→    28→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 42  |··U············B|
+    29→    29→[17:20:19.218] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+    30→    30→[17:20:19.220] OK    RGB aplicado via receiver 2.4G.
+    31→    31→[17:20:22.102] INFO  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+    32→    32→[17:20:22.102] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    33→    33→[17:20:22.102] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+    34→    34→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+    35→    35→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+    36→    36→[17:20:22.122] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+    37→    37→[17:20:22.174] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    38→    38→[17:20:22.174] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+    39→    39→0x0000  05 10 00 01 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+    40→    40→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 31  |··U············1|
+    41→    41→[17:20:22.176] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+    42→    42→[17:20:22.178] OK    RGB aplicado via receiver 2.4G.
+    43→    43→[17:20:39.829] INFO  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+    44→    44→[17:20:41.777] INFO  Seletor retornou 3 interface(s) — vinculando as do F75 Max.
+    45→    45→[17:20:41.777] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+    46→    46→[17:20:41.783] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+    47→    47→[17:20:41.784] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+    48→    48→[17:20:41.789] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+    49→    49→[17:20:41.790] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+    50→    50→[17:20:41.790] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+    51→    51→[17:20:41.794] INFO  🔋 Consultando bateria (tamanhos candidatos: 32 B; output máximo declarado da interface preferida: 32 B)…
+    52→    52→[17:20:41.794] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    53→    53→[17:20:41.794] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+    54→    54→[17:20:41.848] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+    55→    55→[17:20:42.103] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    56→    56→[17:20:42.103] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+    57→    57→[17:20:42.110] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+    58→    58→[17:20:42.365] WARN  Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).
+    59→    59→[17:20:45.763] INFO  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+    60→    60→[17:20:45.763] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    61→    61→[17:20:45.763] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+    62→    62→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+    63→    63→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+    64→    64→[17:20:45.822] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+    65→    65→[17:20:45.877] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    66→    66→[17:20:45.877] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+    67→    67→0x0000  05 10 00 01 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+    68→    68→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 31  |··U············1|
+    69→    69→[17:20:45.883] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+    70→    70→[17:20:45.888] OK    RGB aplicado via receiver 2.4G.
+    71→    71→[17:21:00.848] INFO  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+    72→    72→[17:21:03.087] INFO  Seletor retornou 4 interface(s) — vinculando as do F75 Max.
+    73→    73→[17:21:03.087] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+    74→    74→[17:21:03.094] INFO  🔋 Consultando bateria (tamanhos candidatos: 32 B; output máximo declarado da interface preferida: 32 B)…
+    75→    75→[17:21:03.094] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    76→    76→[17:21:03.094] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+    77→    77→[17:21:03.154] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+    78→    78→[17:21:03.410] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    79→    79→[17:21:03.411] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+    80→    80→[17:21:03.417] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+    81→    81→[17:21:03.672] WARN  Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).
+    82→    82→[17:21:14.238] INFO  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+    83→    83→[17:21:14.238] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    84→    84→[17:21:14.238] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+    85→    85→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+    86→    86→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+    87→    87→[17:21:14.302] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+    88→    88→[17:21:14.358] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    89→    89→[17:21:14.359] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+    90→    90→0x0000  05 10 00 04 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+    91→    91→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 34  |··U············4|
+    92→    92→[17:21:14.369] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+    93→    93→[17:21:14.376] OK    RGB aplicado via receiver 2.4G.
+    94→    94→[17:21:16.195] INFO  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+    95→    95→[17:21:16.195] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+    96→    96→[17:21:16.195] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+    97→    97→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+    98→    98→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+    99→    99→[17:21:16.260] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+   100→   100→[17:21:16.317] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   101→   101→[17:21:16.318] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+   102→   102→0x0000  05 10 00 04 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+   103→   103→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 34  |··U············4|
+   104→   104→[17:21:16.326] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+   105→   105→[17:21:16.332] OK    RGB aplicado via receiver 2.4G.
+   106→   106→[17:21:16.871] INFO  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+   107→   107→[17:21:16.871] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   108→   108→[17:21:16.871] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+   109→   109→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+   110→   110→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+   111→   111→[17:21:16.932] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+   112→   112→[17:21:16.990] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   113→   113→[17:21:16.990] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+   114→   114→0x0000  05 10 00 04 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+   115→   115→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 34  |··U············4|
+   116→   116→[17:21:16.998] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+   117→   117→[17:21:17.004] OK    RGB aplicado via receiver 2.4G.
+   118→   118→[17:21:18.806] INFO  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+   119→   119→[17:21:18.806] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   120→   120→[17:21:18.806] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+   121→   121→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+   122→   122→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+   123→   123→[17:21:18.864] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+   124→   124→[17:21:18.922] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   125→   125→[17:21:18.922] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+   126→   126→0x0000  05 10 00 04 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+   127→   127→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 34  |··U············4|
+   128→   128→[17:21:18.930] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+   129→   129→[17:21:18.936] OK    RGB aplicado via receiver 2.4G.
+   130→   130→[17:21:19.618] INFO  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+   131→   131→[17:21:19.618] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   132→   132→[17:21:19.618] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+   133→   133→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+   134→   134→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+   135→   135→[17:21:19.676] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+   136→   136→[17:21:19.734] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   137→   137→[17:21:19.734] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+   138→   138→0x0000  05 10 00 04 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+   139→   139→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 34  |··U············4|
+   140→   140→[17:21:19.746] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+   141→   141→[17:21:19.753] OK    RGB aplicado via receiver 2.4G.
+   142→   142→[17:26:10.533] INFO  F75 Max Web Driver pronto — 100% local, nada sai do navegador. Logs completos espelhados no console (F12 → filtro [F75]).
+   143→   143→[17:26:10.560] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   144→   144→[17:26:10.568] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   145→   145→[17:26:10.568] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   146→   146→[17:26:10.576] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   147→   147→[17:26:10.576] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   148→   148→[17:26:10.584] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   149→   149→[17:26:10.593] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   150→   150→[17:26:10.601] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   151→   151→[17:26:10.610] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   152→   152→[17:26:10.610] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   153→   153→[17:26:10.620] OK    Dispositivos já autorizados rebinados automaticamente.
+   154→   154→[17:26:10.796] INFO  F75 Max Web Driver pronto — 100% local, nada sai do navegador. Logs completos espelhados no console (F12 → filtro [F75]).
+   155→   155→[17:26:10.820] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   156→   156→[17:26:10.830] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   157→   157→[17:26:10.830] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   158→   158→[17:26:10.841] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   159→   159→[17:26:10.842] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   160→   160→[17:26:10.851] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   161→   161→[17:26:10.861] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   162→   162→[17:26:10.868] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   163→   163→[17:26:10.871] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   164→   164→[17:26:10.871] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   165→   165→[17:26:10.873] OK    Dispositivos já autorizados rebinados automaticamente.
+   166→   166→[17:26:10.912] INFO  F75 Max Web Driver pronto — 100% local, nada sai do navegador. Logs completos espelhados no console (F12 → filtro [F75]).
+   167→   167→[17:26:10.920] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   168→   168→[17:26:10.923] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   169→   169→[17:26:10.923] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   170→   170→[17:26:10.926] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   171→   171→[17:26:10.926] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   172→   172→[17:26:10.928] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   173→   173→[17:26:10.931] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   174→   174→[17:26:10.933] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   175→   175→[17:26:10.935] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   176→   176→[17:26:10.936] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   177→   177→[17:26:10.936] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   178→   178→[17:26:10.937] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   179→   179→[17:26:10.939] OK    Dispositivos já autorizados rebinados automaticamente.
+   180→   180→[17:26:10.954] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   181→   181→[17:26:11.020] INFO  F75 Max Web Driver pronto — 100% local, nada sai do navegador. Logs completos espelhados no console (F12 → filtro [F75]).
+   182→   182→[17:26:11.026] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   183→   183→[17:26:11.028] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   184→   184→[17:26:11.029] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   185→   185→[17:26:11.031] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   186→   186→[17:26:11.031] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   187→   187→[17:26:11.034] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   188→   188→[17:26:11.037] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   189→   189→[17:26:11.040] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   190→   190→[17:26:11.042] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   191→   191→[17:26:11.043] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   192→   192→[17:26:11.043] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   193→   193→[17:26:11.044] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   194→   194→[17:26:11.047] OK    Dispositivos já autorizados rebinados automaticamente.
+   195→   195→[17:26:11.064] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   196→   196→[17:26:11.208] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   197→   197→[17:26:11.209] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   198→   198→[17:26:11.213] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   199→   199→[17:26:11.318] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   200→   200→[17:26:11.319] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   201→   201→[17:26:11.322] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   202→   202→[17:26:11.466] DEBUG Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).
+   203→   203→[17:26:11.576] DEBUG Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).
+   204→   204→[17:32:49.539] INFO  F75 Max Web Driver v3 pronto — protocolo nativo portado, 100% local. Console espelhado aqui e no F12 (filtro [F75]).
+   205→   205→[17:32:49.557] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   206→   206→[17:32:49.558] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   207→   207→[17:32:49.558] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   208→   208→[17:32:49.558] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   209→   209→[17:32:49.559] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   210→   210→[17:32:49.559] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   211→   211→[17:32:49.559] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   212→   212→[17:32:49.559] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   213→   213→[17:32:49.559] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   214→   214→[17:32:49.560] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   215→   215→[17:32:49.560] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   216→   216→[17:32:49.560] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   217→   217→[17:32:49.561] OK    Dispositivos já autorizados rebinados automaticamente.
+   218→   218→[17:32:49.579] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   219→   219→[17:32:49.830] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   220→   220→[17:32:49.830] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   221→   221→[17:32:49.831] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   222→   222→[17:32:50.081] DEBUG Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).
+   223→   223→[17:33:16.721] INFO  F75 Max Web Driver v3 pronto — protocolo nativo portado, 100% local. Console espelhado aqui e no F12 (filtro [F75]).
+   224→   224→[17:33:16.741] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   225→   225→[17:33:16.741] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   226→   226→[17:33:16.741] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   227→   227→[17:33:16.741] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   228→   228→[17:33:16.741] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   229→   229→[17:33:16.742] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   230→   230→[17:33:16.742] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   231→   231→[17:33:16.742] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   232→   232→[17:33:16.742] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   233→   233→[17:33:16.742] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   234→   234→[17:33:16.742] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   235→   235→[17:33:16.743] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   236→   236→[17:33:16.743] OK    Dispositivos já autorizados rebinados automaticamente.
+   237→   237→[17:33:16.752] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   238→   238→[17:33:17.002] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   239→   239→[17:33:17.003] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   240→   240→[17:33:17.003] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   241→   241→[17:33:17.254] DEBUG Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).
+   242→   242→[17:34:55.240] INFO  F75 Max Web Driver v3 pronto — protocolo nativo portado, 100% local. Console espelhado aqui e no F12 (filtro [F75]).
+   243→   243→[17:34:55.253] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): AULA F75Max
+   244→   244→[17:34:55.260] DEBUG Interface wiredCommand aberta: AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+   245→   245→[17:34:55.261] OK    ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+   246→   246→[17:34:55.267] DEBUG Interface wiredDisplay aberta: AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+   247→   247→[17:34:55.268] OK    ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+   248→   248→[17:34:55.274] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+   249→   249→[17:34:55.281] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+   250→   250→[17:34:55.287] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+   251→   251→[17:34:55.297] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+   252→   252→[17:34:55.297] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   253→   253→[17:34:55.297] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   254→   254→[17:34:55.298] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   255→   255→[17:34:55.309] OK    Dispositivos já autorizados rebinados automaticamente.
+   256→   256→[17:34:55.321] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   257→   257→[17:34:55.576] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   258→   258→[17:34:55.576] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   259→   259→[17:34:55.582] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   260→   260→[17:34:55.836] DEBUG Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).
+   261→   261→[17:39:59.399] INFO  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+   262→   262→[17:40:01.227] INFO  Seletor retornou 4 interface(s) — vinculando as do F75 Max.
+   263→   263→[17:40:01.227] OK    ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+   264→   264→[17:40:01.228] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   265→   265→[17:40:01.228] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   266→   266→[17:40:01.229] CMD   TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   267→   267→[17:40:01.229] DEBUG TX output id=0x00 · battery query 32B id=não · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+   268→   268→[17:40:01.232] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   269→   269→[17:40:01.233] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=não
+   270→   270→[17:40:01.483] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   271→   271→[17:40:01.483] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   272→   272→[17:40:01.483] CMD   TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   273→   273→[17:40:01.483] DEBUG TX output id=0x00 · battery query 32B id=sim · primeiros bytes: 00 20 01 00 00 00 00 00 00 00 00 00
+   274→   274→[17:40:01.483] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   275→   275→[17:40:01.484] DEBUG ✔ output id=0x00 aceito pelo SO · battery query 32B id=sim
+   276→   276→[17:40:01.733] DEBUG Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).
+   277→   277→[17:40:06.223] INFO  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #FF3B30 · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+   278→   278→[17:40:06.223] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   279→   279→[17:40:06.223] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+   280→   280→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+   281→   281→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+   282→   282→[17:40:06.229] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+   283→   283→[17:40:06.280] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   284→   284→[17:40:06.280] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+   285→   285→0x0000  05 10 00 01 ff 3b 30 00  00 00 00 00 03 02 00 00  |·····;0·········|
+   286→   286→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 84  |··U·············|
+   287→   287→[17:40:06.280] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+   288→   288→[17:40:06.280] OK    RGB aplicado via receiver 2.4G.
+   289→   289→[17:40:07.628] INFO  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #FF3B30 · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+   290→   290→[17:40:07.628] CMD   TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   291→   291→[17:40:07.628] DEBUG TX output id=0x00 · RGB commit (32 bytes)
+   292→   292→0x0000  0f 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+   293→   293→0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 0f  |················|
+   294→   294→[17:40:07.634] DEBUG ✔ output id=0x00 aceito pelo SO · RGB commit
+   295→   295→[17:40:07.684] CMD   TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+   296→   296→[17:40:07.684] DEBUG TX output id=0x00 · RGB LED (32 bytes)
+   297→   297→0x0000  05 10 00 01 ff 3b 30 00  00 00 00 00 03 02 00 00  |·····;0·········|
+   298→   298→0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 84  |··U·············|
+   299→   299→[17:40:07.685] DEBUG ✔ output id=0x00 aceito pelo SO · RGB LED
+   300→   300→[17:40:07.685] OK    RGB aplicado via receiver 2.4G.

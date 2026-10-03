@@ -10,6 +10,7 @@ import {
   Palette,
   Plug,
   PlugZap,
+  RadioTower,
   RefreshCw,
   Terminal,
   TriangleAlert,
@@ -85,6 +86,7 @@ export default function F75App() {
   const [status, setStatus] = useState<DriverStatus>({ sim: false, wiredCommand: false, wiredDisplay: false, dongle: false });
   const [busy, setBusy] = useState<string | null>(null);
   const [battery, setBattery] = useState<number | null>(null);
+  const [routeLabel, setRouteLabel] = useState<string | null>(null);
 
   const [rgb, setRgbState] = useState<RgbSettings>({ mode: 1, brightness: 3, speed: 2, direction: 0, colorful: false, color: hexToInt(CYAN) });
   const [perf, setPerfState] = useState<PerfState>({ level: 2, sleep: 2, game: false, lockAltTab: false, lockAltF4: false, lockWin: false });
@@ -162,12 +164,20 @@ export default function F75App() {
     void run("connect", async () => {
       const s = await driverRef.current!.connectPicker();
       if (s.dongle) await driverRef.current!.queryBattery(true).catch(() => undefined);
+      setRouteLabel(driverRef.current!.dongleRouteLabel);
     });
 
   const reconnect = () =>
     void run("reconnect", async () => {
       const s = await driverRef.current!.reconnectSaved(false);
       if (s.dongle) await driverRef.current!.queryBattery(true).catch(() => undefined);
+      setRouteLabel(driverRef.current!.dongleRouteLabel);
+    });
+
+  const probeDongle = () =>
+    void run("probe", async () => {
+      await driverRef.current!.queryBattery(false);
+      setRouteLabel(driverRef.current!.dongleRouteLabel);
     });
 
   const disconnect = () =>
@@ -293,7 +303,7 @@ export default function F75App() {
               </Chip>
               <Chip title="Nenhuma telemetria — nada sai da máquina">100% local</Chip>
             </div>
-            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v3 · TX descriptor-aware</p>
+            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v4 · rota do receiver validada por sonda</p>
           </div>
         </aside>
 
@@ -348,10 +358,12 @@ export default function F75App() {
                   battery={battery}
                   driverReady={driverReady}
                   resetArmed={resetArmed}
+                  routeLabel={routeLabel}
                   onConnect={connect}
                   onReconnect={reconnect}
                   onDisconnect={disconnect}
                   onToggleSim={toggleSim}
+                  onProbe={probeDongle}
                   onFactoryReset={factoryReset}
                 />
               )}
@@ -407,15 +419,15 @@ function DevicePanel(props: {
   battery: number | null;
   driverReady: boolean;
   resetArmed: boolean;
+  routeLabel: string | null;
   onConnect: () => void;
   onReconnect: () => void;
   onDisconnect: () => void;
   onToggleSim: () => void;
+  onProbe: () => void;
   onFactoryReset: () => void;
 }) {
-  const { supported, status, anyConnected, wiredReady, busy, battery, driverReady, resetArmed } = props;
-  const diag = driverReady ? null : null; // tabela detalhada vive em Sistema
-  void diag;
+  const { supported, status, anyConnected, wiredReady, busy, battery, driverReady, resetArmed, routeLabel } = props;
 
   return (
     <section className="space-y-5" aria-label="Dispositivo">
@@ -433,6 +445,26 @@ function DevicePanel(props: {
               </Chip>
             )}
           </div>
+
+          {status.dongle && !status.sim && (
+            <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-zinc-300">Rota de comando do receiver</p>
+                <Button
+                  onClick={props.onProbe}
+                  disabled={anyBusy(busy)}
+                  variant="outline"
+                  className="h-7 border-zinc-700 px-2.5 text-[11px] text-zinc-300 hover:bg-zinc-800"
+                >
+                  {busy === "probe" ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <RadioTower className="mr-1.5 h-3 w-3" />}
+                  Sondar rotas
+                </Button>
+              </div>
+              <p className={`font-mono text-[10px] leading-relaxed ${routeLabel ? "text-emerald-400" : "text-zinc-500"}`}>
+                {routeLabel ?? "não validada — a sonda envia a query de bateria por cada rota candidata; a resposta real do teclado escolhe a rota usada por RGB, desempenho e bateria"}
+              </p>
+            </div>
+          )}
 
           <p className="text-xs leading-relaxed text-zinc-500">
             No seletor, marque <strong className="text-zinc-300">todas</strong> as entradas “Aula F75 Max” e “Aula F75 Max 2.4G”.
