@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Copy, Terminal, Keyboard, Palette, Wrench, Gamepad2, Battery, Clock, Image as ImageIcon, Sparkles, Download, Usb, ShieldCheck, Zap, MonitorPlay, Repeat } from "lucide-react";
+import { Check, Copy, Terminal, Keyboard, Palette, Wrench, Gamepad2, Battery, Clock, Image as ImageIcon, Sparkles, Download, Usb, ShieldCheck, Zap, MonitorPlay, Repeat, Trash2, RotateCcw } from "lucide-react";
 
 /* ---------------------------------- data --------------------------------- */
 
@@ -232,10 +232,32 @@ for i in range(L):
 out[0].save(dst, save_all=True, append_images=out[1:], loop=0, duration=dur)
 print(f"ok: {L} frames, dissolve de {T} — último frame == primeiro (seam 0)")`;
 
+const RESET_STEPS = `# reset exige CABO USB-C
+# (via 2.4G não funciona!)
+cd Aula-F75-Max-Driver
+make linux-run
+
+# no app: seção Factory Reset
+# → confirme a ação. O log mostra:
+#   "Clearing display memory"
+#    ← GIF (todos os slots) apagados
+#   "Resetting keymap and macro data"
+#   "Resetting lighting data"
+#   "Sending reset footer"
+#   "Resetting display config"
+#   "Factory reset complete."
+
+# desplugue e replugue o cabo
+# → volta pra animação de fábrica`;
+
 const TROUBLESHOOTING = [
   {
     q: "Mudei pra 2.4G e o teclado parou de funcionar (pareamento)",
     a: "Ordem de diagnóstico: (1) confirme que o dongle está plugado direto no PC e aparece no lsusb: `lsusb | grep -i 05ac` → deve listar 05ac:024f; (2) segure Fn — a telinha mostra o modo de conexão atual, confirme que está em 2.4G; (3) re-emparelhe segurando Fn+R por ~3s até o ícone RF piscar na tela — o dongle e o teclado se reconectam sozinhos em segundos (comando oficial 'rematch' do manual Epomaker); (4) bateria baixa derruba o wireless primeiro — deixe no cabo 20–30 min; (5) evite portas USB 3.0 e hubs (interferência de 2.4 GHz) — use porta USB 2.0 ou extensor; (6) último recurso: Fn+Esc segurado 3s reseta o teclado, depois repita Fn+R. No Linux o dongle é HID genérico — se digita, já era: o card '2.4G receiver' do app acende e libera RGB/bateria/Game Mode.",
+  },
+  {
+    q: "Quero remover o GIF da telinha (ou voltar ao padrão de fábrica)",
+    a: "O driver não tem 'apagar slot N' — o comando de limpeza de display zera a memória INTEIRA (todos os slots de uma vez). Então remover de verdade = Factory Reset no app, com CABO USB-C (via 2.4G não funciona). O reset apaga todos os slots de display + keymap/macros + lighting + config de display — depois é só reconfigurar o RGB ciano #41E8FF, brilho 3 e re-sincronizar o relógio. Se você só quer trocar o visual, NÃO resete: faça upload de outro GIF no mesmo slot, ele sobrescreve. E guarde o GIF no PC antes — o driver não faz backup/download dos slots.",
   },
   {
     q: "Teclado conectado mas o app não detecta",
@@ -819,6 +841,63 @@ ffmpeg -i stardew.gif -vf "fps=15,scale=128:128:flags=neighbor,split[a][b];[a]pa
                   </div>
                 </CardContent>
               </Card>
+            </section>
+
+            {/* remoção / reset */}
+            <section className="space-y-4">
+              <h2 className="flex items-center gap-2 text-xl font-bold">
+                <Trash2 className="h-5 w-5 text-rose-400" /> Removendo o GIF: como “desinstalar” da telinha
+              </h2>
+              <div className="grid gap-5 lg:grid-cols-3">
+                <Card className="border-zinc-800 bg-zinc-900/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">
+                      <RotateCcw className="mr-2 inline h-4 w-4 text-emerald-400" />Só trocar? Não precisa remover
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-zinc-300 leading-relaxed">
+                      Upar outro GIF <strong className="text-emerald-400">no mesmo slot sobrescreve</strong> o
+                      anterior — o driver grava o novo header + frames e commita por cima. Se a ideia é só
+                      trocar o visual da telinha, faça upload direto e siga o baile. Zero risco, zero reset.
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="border-zinc-800 bg-zinc-900/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Remoção real = Factory Reset (cabo)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-zinc-300 leading-relaxed">
+                      Confirmei no código do driver: <strong className="text-zinc-100">não existe “apagar slot
+                      N”</strong>. O comando de limpeza zera a memória de display inteira — todos os slots de
+                      uma vez. Ou seja, remover de verdade = Factory Reset:
+                    </p>
+                    <CodeBlock code={RESET_STEPS} />
+                  </CardContent>
+                </Card>
+                <Card className="border-zinc-800 bg-zinc-900/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">O que o reset apaga (pra não levar susto)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm text-zinc-300 leading-relaxed">
+                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />Todos os slots de display — o GIF do Stardew vai junto</li>
+                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />Keymap e macros customizadas</li>
+                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />Dados de lighting do teclado</li>
+                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />Config de display — volta pro modo de fábrica</li>
+                      <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />Depois: RGB ciano gelo #41E8FF + brilho 3 via 2.4G (Tab 1) e re-sincroniza o relógio — 2 min</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-5 text-sm text-rose-100/90 leading-relaxed">
+                <strong className="text-rose-400">Antes de resetar:</strong> o driver só faz UPLOAD — não lê os
+                slots de volta, então não existe backup pelo app. Garanta que o GIF está salvo no seu PC
+                (o <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs">stardew_display_loop.gif</code> já
+                está na pasta <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs">upload/</code>).
+                Resetou sem backup = só upando de novo. E não adianta tentar pelo 2.4G: reset é exclusivo do cabo.
+              </div>
             </section>
 
             {/* fontes */}

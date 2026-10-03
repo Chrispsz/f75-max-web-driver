@@ -143,3 +143,19 @@ Work Log:
 Stage Summary:
 - Veredito com dados: ciano gelo #41E8FF é a melhor cor possível pro colorway cinza/branco; branco estático (desejo anterior) é o pior pra contraste nessa combinação
 - Artefatos: public/led-compare.png + seção nova no guia com presets copiáveis pro Fixed Color do app (via receiver 2.4G)
+
+---
+Task ID: 8
+Agent: Z.ai Code (main)
+Task: Responder "como remover o GIF" e documentar remoção/reset no guia
+
+Work Log:
+- Verifiquei o código-fonte do driver (LinuxHIDBackend.swift via jsDelivr): factoryReset = packet 0x04,0x15 [8]=0x08 + 8 páginas zeradas (limpa TODA a memória de display, todos os slots) + reset de keymap/macros + lighting + footer 0xAA55 + reset de display config (0x04,0x17)
+- Confirmado: NÃO existe comando de apagar slot individual; não existe download/backup de slots (só upload)
+- Adicionado no page.tsx: seção "Removendo o GIF: como 'desinstalar' da telinha" na tab GIFs & Display (3 cards: trocar sobrescrevendo / Factory Reset via cabo / o que o reset apaga) + box de alerta sobre ausência de backup
+- Adicionado item no TROUBLESHOOTING: "Quero remover o GIF da telinha (ou voltar ao padrão de fábrica)"
+- Ajustei as linhas do RESET_STEPS pra caberem no card estreito (2 iterações de encurtamento validadas por screenshot)
+
+Stage Summary:
+- Resposta: remoção real = Factory Reset no app com CABO USB-C (volta pra animação de fábrica); trocar visual = upload no mesmo slot (sobrescreve, sem reset)
+- Guia validado no Agent Browser (desktop 1280px + mobile 390px), lint limpo, HTTP 200, sem erros de página
