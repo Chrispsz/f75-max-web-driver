@@ -174,3 +174,23 @@ Work Log:
 Stage Summary:
 - Resposta: comportamento normal (indicador), não defeito; gatilhos = Fn+Win ou Game Mode; fix validado pela comunidade
 - Validação: lint limpo, HTTP 200, callout + accordion verificados no Agent Browser, zero erros
+
+---
+Task ID: 10
+Agent: Z.ai Code (main)
+Task: Portar o driver nativo pra WebHID (driver web) e adicionar tab "Driver Web" no guia
+
+Work Log:
+- Estudou o protocolo completo no código-fonte: AulaCore.swift (packets, checksum, timePayload), LinuxHIDBackend.swift (commandExchange via feature reports 0xFF13, chunks 4096B em 0xFF68 + ACKs, factoryReset, bateria), WirelessAulaDevice.swift (RGB modes 0-19, reports 0x0f/0x05/0x07, gameMode=disableWin), DisplayEncoder.swift (header 256B + delays×2ms + RGB565 LE)
+- Criado src/lib/webhid.d.ts (tipos WebHID mínimos, lib.dom não tem)
+- Criado src/lib/aula-protocol.ts: builders de packets byte a byte + encoder RGB565/fit modes via canvas + decodeAnimatedGif (ImageDecoder/WebCodecs) + decodeStillImage
+- Criado src/lib/aula-webhid.ts: AulaWebHid (connect com filtro VID/PID, seleção por usagePage, sendFeature com fallback 0x00-prefixo = semântica hidapi, waitForInput ACKs, syncClock, uploadDisplay com progresso, factoryReset completo, queryBattery com parsing de input report 0x20, applyRGB/applyPerformance/setGameMode)
+- Criado src/components/driver-web.tsx: UI completa (conexão + chips de endpoint, RGB com preset Ciano gelo #41E8FF, bateria, performance, Game Mode, upload com preview canvas/slot/fit/progresso, clock sync, factory reset com confirmação em 2 cliques, log local)
+- page.tsx: nova tab "Driver Web [beta]" com intro, 3 cards, componente e comparação web vs nativo
+- Correções de tipos: BufferSource → Uint8Array|DataView|ArrayBuffer (TS 5.7 generics), setBattery(percent ?? null)
+- Validação no Agent Browser: tab renderiza, WebHID detectado no Chromium (navigator.hid = object), botões desabilitados sem conexão corretos, upload do stardew_display_loop.gif → "78 frame(s) · 625 blocos · 2500 KB" = IDÊNTICO ao driver nativo (78f/625 blocos), preview canvas desenha o 1º frame, zero erros de página
+
+Stage Summary:
+- Driver web funcional em beta: mesmo protocolo do nativo, sem compilação, 100% local no navegador
+- Pipeline de encode validado byte-idêntico ao nativo com o GIF real do usuário
+- Limitações honestas documentadas no guia (só Chromium, sem notificação de bateria/autostart)
