@@ -260,6 +260,10 @@ const TROUBLESHOOTING = [
     a: "O driver não tem 'apagar slot N' — o comando de limpeza de display zera a memória INTEIRA (todos os slots de uma vez). Então remover de verdade = Factory Reset no app, com CABO USB-C (via 2.4G não funciona). O reset apaga todos os slots de display + keymap/macros + lighting + config de display — depois é só reconfigurar o RGB ciano #41E8FF, brilho 3 e re-sincronizar o relógio. Se você só quer trocar o visual, NÃO resete: faça upload de outro GIF no mesmo slot, ele sobrescreve. E guarde o GIF no PC antes — o driver não faz backup/download dos slots.",
   },
   {
+    q: "A tecla Windows fica branca estática e não segue o RGB",
+    a: "Não é defeito: é o indicador de Win lock. Com a tecla Windows travada, o LED dela fica branco fixo de propósito — o resto do teclado continua seguindo o efeito normal. Causas: (1) Fn+Win apertado sem querer — o atalho trava a tecla; (2) Game Mode ligado no driver — o código do app confirma que Game Mode envia disableWin junto (trava o Win). Fix nessa ordem: Fn+Win (destrava e o LED volta a seguir o RGB na hora) → se não responder, Fn+Esc segurado 3–5s (reset interno do teclado, reseta o RGB também) → confira se o Game Mode está OFF no driver.",
+  },
+  {
     q: "Teclado conectado mas o app não detecta",
     a: "Abra o painel de diagnóstico de endpoints do app — é a primeira coisa a checar. Depois: use uma porta USB direta (não hub), rode `lsusb | grep -iE '0c45|05ac'` e confirme que as regras udev foram instaladas + você replugou os cabos depois do `udevadm trigger`. No Wayland (padrão do CachyOS) o uaccess funciona com sessão ativa — se estiver logado via SSH/GDM direto, logue na sessão gráfica.",
   },
@@ -660,6 +664,15 @@ ls .build/release/`} />
                     definido sem lavar os keycaps. E ciano combina com o GIF de Stardew (água) que
                     já tá no display 😉 Configura no app via receiver 2.4G: Lighting → Fixed Color.
                   </p>
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100/90 leading-relaxed">
+                    <strong className="text-amber-400">Só a tecla Windows fica branca fixa?</strong> É o
+                    indicador de Win lock — não é defeito. Quando a tecla Win está travada, o LED dela
+                    acende branco estático de propósito enquanto o resto segue o efeito. O gatilho mais
+                    comum é <strong>Fn+Win</strong> apertado sem querer (o atalho trava/destrava) ou o
+                    <strong> Game Mode ligado no driver</strong> — o código confirma: Game Mode envia
+                    <code className="mx-1 rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-xs">disableWin</code>
+                    junto. Fix: <strong>Fn+Win</strong> destrava na hora e a tecla volta a seguir o RGB.
+                  </div>
                 </CardContent>
               </Card>
             </section>

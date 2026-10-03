@@ -159,3 +159,18 @@ Work Log:
 Stage Summary:
 - Resposta: remoção real = Factory Reset no app com CABO USB-C (volta pra animação de fábrica); trocar visual = upload no mesmo slot (sobrescreve, sem reset)
 - Guia validado no Agent Browser (desktop 1280px + mobile 390px), lint limpo, HTTP 200, sem erros de página
+
+---
+Task ID: 9
+Agent: Z.ai Code (main)
+Task: Explicar tecla Windows branca estática (Win lock indicator) e documentar no guia
+
+Work Log:
+- Pesquisa web (r/Epomaker, r/mkindia, tuxforums): tecla Win branca fixa = indicador de Win lock, comportamento conhecido no Aula F75/F75 Max; fix comunidade = Fn+Win, ou Fn+Esc 3–5s
+- Confirmado no código do driver (WirelessAulaDevice.swift): setGameMode envia disableWin = gameMode → Game Mode ON trava a tecla Win (LED branco é o indicador)
+- Adicionado callout amber na seção de RGB da tab Config Perfeita ("Só a tecla Windows fica branca fixa?")
+- Adicionado item no TROUBLESHOOTING com ordem de fix: Fn+Win → Fn+Esc 3–5s → conferir Game Mode OFF
+
+Stage Summary:
+- Resposta: comportamento normal (indicador), não defeito; gatilhos = Fn+Win ou Game Mode; fix validado pela comunidade
+- Validação: lint limpo, HTTP 200, callout + accordion verificados no Agent Browser, zero erros
