@@ -236,3 +236,22 @@ Stage Summary:
 - RGB pelo dongle agora: (1) usa a interface 0xFF60 de verdade, (2) respeita report IDs do descritor real, (3) cai na estratégia vencedora cacheada, (4) se falhar, o log F12 + DiagnosticsCard mostram a matriz completa
 - Caminho de iteração com hardware real: usuário clica "copiar diagnóstico completo" e cola no chat → ajustamos o protocolo com dados do teclado dele
 - Limitação documentada: WebHID injeta o byte de report ID na wire — upload de display em interface SEM IDs usa stream fatiado (4095B) em vez do bloco cru do nativo; interface numerada reproduz a wire nativa exata
+
+---
+Task ID: 13
+Agent: Z.ai Code (main)
+Task: Transformar o driver web em app standalone minimalista estilo driver de periférico (remover guia/Alt+Tab/systemd), endurecer o motor TX (v3) e blindar tudo com verificação completa no browser.
+
+Work Log:
+- Motor TX v3 (src/lib/f75/driver.ts): cache global de wire-spec por (endpoint, modo, reportId, tamanho) — um único sucesso calibra RGB+perf+bateria de uma vez (antes era por família de comando); capableCandidates() filtra interfaces sem output/feature grande o bastante (não gasta tentativas na interface de teclado do receiver); reusable() valida reuso seguro da spec cacheada (id compatível + tamanho); auto-calibração silenciosa calibrateDongle() roda query de bateria ao vincular o receiver (igual ao nativo) e valida a rota ANTES do primeiro Aplicar; lastTx agora populado também em sim mode (diagnóstico demonstrável); queryBattery ganhou param quiet
+- UI reescrita de zero como APP de driver (não mais página-guia): F75App.tsx = shell h-dvh com topbar (marca + pill de conexão + bateria), sidebar desktop de 6 seções (Dispositivo/Iluminação/Desempenho/Tela/Teclas/Sistema) com nav horizontal em pills no mobile, status bar fixa no rodapé com chips de endpoint + canais 0xFF13/0xFF68/0xFF60
+- Painéis: Dispositivo (chips de endpoint + bateria, conectar/reconectar/desconectar/simulação em botões compactos, restauração de fábrica em zona de perigo com confirmação em 2 cliques); Iluminação (grid dos 20 modos, 8 presets de cor + color picker, sliders brilho/velocidade, direção segmentada, switch colorful, resumo mono 0x05 em tempo real); Desempenho (latência N1-N5 com ms no title, suspensão, modo jogo, 3 bloqueios independentes com switches, resumo mono 0x07); Tela (dropzone drag&drop, 2 animações procedurais, preview canvas 128×128 animado direto do stream RGB565 via decodeFrameToImageData, slot/fit com re-encode on-change, progresso+ETA+cancelamento, relógio manual+auto 60s); Teclas (captura keydown capture, última tecla grande + histórico em chips, 40 entradas); Sistema (tabela de interfaces com descritores reais, matriz da última TX, console com filtros tudo/TX/RX/avisos/erros + busca + auto-scroll + copiar + baixar .log)
+- atoms.tsx: Chip/SectionHeader/MonoLine/Segmented/LockedNote/FieldLabel/BatteryGauge compartilhados
+- Persistência localStorage (f75.webdriver.v1): seção ativa + RGB + desempenho restaurados no reload
+- Removido TUDO: guia completo (page.tsx inteiro com 4 tabs), SystemCard com comandos gsettings/systemd/journalctl, falatório de Alt+Tab (ficou só o controle firmware dos bloqueios, neutro), botão "Guia completo", driver-cards.tsx e F75DriverTool.tsx deletados; page.tsx = server component que só renderiza F75App; layout.tsx com metadata "F75 Max Web Driver"
+- Validação Agent Browser (1280px + 390px): sim mode destrava tudo; RGB aplicado (0x0f commit + 0x05 LED, ck=ok, hexdumps no console); unlock flags 0; animação gerada → preview canvas 128×128 animando → upload 361 blocos + commit; Teclas captura Tab/Enter; Sistema: 80 linhas no console, filtros, matriz "ok (sim)"; persistência Spectrum→reload→restaurado; footer gruda no vh em ambos viewports (800/800, 844/844); zero erros de página; lint + tsc limpos
+
+Stage Summary:
+- O site agora É o driver: app fullscreen estilo VIA/Wootility, minimalista, sem nenhum conteúdo de guia/OS
+- Motor TX v3 mais robusto: calibração automática ao conectar o receiver + cache global de rota vencedora — o clique em Aplicar usa a rota já validada (ataca o NotAllowedError residual por outro ângulo: calibração preventiva)
+- UX de driver de verdade: estado vivo em resumos mono, preview fiel RGB565, console embutido = F12, persistência de settings

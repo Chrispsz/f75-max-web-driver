@@ -24,7 +24,10 @@
  *
  * A matriz de estratégias abaixo tenta as equivalentes na ordem que o
  * DESCRITOR real sugere, loga cada tentativa (F12 / painel) e cacheia a
- * vencedora por família de comando. Nada é "adivinhado": cada tentativa
+ * vencedora de forma GLOBAL por (endpoint, modo, id, tamanho): um único
+ * sucesso calibra RGB, performance e bateria ao mesmo tempo. Ao conectar o
+ * receiver, uma auto-calibração silenciosa (query de bateria, igual ao
+ * nativo) valida a rota ANTES do primeiro clique em Aplicar. Cada tentativa
  * fracassada aparece no log com o motivo.
  */
 
@@ -204,7 +207,7 @@ export class F75Driver {
   private batteryWaiters: ((percent: number | null) => void)[] = [];
   private displayAckCounter = 0;
   private hidListenersAttached = false;
-  private txCache = new Map<string, { endpointKey: string; spec: TxSpec }>();
+  private wireCache = new Map<string, { endpointKey: string; spec: TxSpec }>();
   private lastTx: { label: string; attempts: TxAttemptLog[] } | null = null;
 
   onStatus: ((s: DriverStatus) => void) | null = null;
@@ -258,7 +261,7 @@ export class F75Driver {
     this.wiredDisplay = undefined;
     this.dongleInterfaces = [];
     this.dongle = undefined;
-    this.txCache.clear();
+    this.wireCache.clear();
   }
 
   /* ------------------------------- conexão -------------------------------- */
@@ -391,6 +394,7 @@ export class F75Driver {
       if (!this.dongle.summary.usagePages.includes(AULA.dongleRawPage)) {
         f75log.warn("Nenhuma interface do receiver expôs a usage page 0xFF60 — usando a de maior output. Se RGB falhar, reconecte com o cabo e refaça o pareamento (Fn+R).");
       }
+      void this.calibrateDongle();
     }
   }
 
@@ -644,51 +648,78 @@ export class F75Driver {
     }
   }
 
+  /** Chave de cache da wire: mesmo endpoint + modo + id + tamanho de payload. */
+  private specKey(epKey: string, spec: TxSpec): string {
+    return `${epKey}|${spec.mode}|${spec.reportId}|${spec.padded ? "p" : "r"}|${spec.payloadLen}`;
+  }
+
+  /** Spec vencedora de outro comando serve para este pacote? (mesma forma de wire) */
+  private reusable(ep: Endpoint, packet: Uint8Array, spec: TxSpec): boolean {
+    if (spec.reportId < 0) return false;
+    if (spec.reportId === 0 && ep.summary.hasNumberedIds) return false;
+    if (spec.reportId !== 0 && spec.reportId !== packet[0]) return false;
+    const base = spec.reportId !== 0 ? packet.length - 1 : packet.length;
+    return spec.padded ? spec.payloadLen >= base : spec.payloadLen === base;
+  }
+
+  /** Candidatos capazes de carregar este pacote — evita gastar tentativas na
+   *  interface de teclado/mouse do receiver, que não tem output de 32 B. */
+  private capableCandidates(role: EndpointRole, packet: Uint8Array, modes: WireMode[]): Endpoint[] {
+    const all = this.candidatesFor(role);
+    const capable = all.filter((ep) => {
+      const need = ep.summary.hasNumberedIds ? packet.length - 1 : packet.length;
+      return (
+        (modes.includes("output") && ep.summary.maxOutput >= need) ||
+        (modes.includes("feature") && ep.summary.maxFeature >= need)
+      );
+    });
+    return capable.length > 0 ? capable : all;
+  }
+
   /**
-   * Envia um pacote pela matriz de estratégias. Primeiro tenta a tentativa
-   * cacheada (txKey), depois varre candidatos × modos. Primeiro sucesso
-   * vence; tudo falhou → F75Error com resumo.
+   * Envia um pacote pela matriz de estratégias. Primeiro tenta as specs
+   * vencedoras de comandos anteriores com a mesma forma de wire (cache
+   * global), depois varre candidatos × modos. Primeiro sucesso vence; tudo
+   * falhou → F75Error com resumo completo das tentativas.
    */
   private async tx(
     packet: Uint8Array,
     label: string,
     role: EndpointRole,
     modes: WireMode[] = ["output", "feature"],
-    txKey?: string,
     dump = true
   ): Promise<void> {
     if (this.simMode) {
       f75log.cmd(`TX (sim) · ${label} · ${role === "dongle" ? describeWireless(packet) : describeWired(packet)}`);
       if (dump) f75log.dump(packet, `TX sim · ${label}`);
+      this.lastTx = {
+        label,
+        attempts: [{ target: "sim", mode: "sim", reportId: "—", wire: `${packet.length}B`, result: "✔ ok (sim)" }],
+      };
       return;
     }
 
-    const candidates = this.candidatesFor(role);
+    const candidates = this.capableCandidates(role, packet, modes);
     if (candidates.length === 0) throw new F75Error(this.requireMessage(role));
 
     const logs: TxAttemptLog[] = [];
 
-    if (txKey) {
-      const cached = this.txCache.get(txKey);
-      if (cached) {
-        const ep = candidates.find((c) => c.key === cached.endpointKey);
-        if (ep) {
-          const ok = await this.emit(ep, cached.spec, packet, label, logs, dump);
-          if (ok) {
-            this.lastTx = { label, attempts: logs };
-            return;
-          }
-        }
-        this.txCache.delete(txKey);
-        f75log.warn(`Estratégia cacheada para ${txKey} deixou de funcionar — revarrendo matriz…`);
+    for (const [key, entry] of this.wireCache) {
+      const ep = candidates.find((c) => c.key === entry.endpointKey);
+      if (!ep || !this.reusable(ep, packet, entry.spec)) continue;
+      if (await this.emit(ep, entry.spec, packet, label, logs, dump)) {
+        this.lastTx = { label, attempts: logs };
+        return;
       }
+      this.wireCache.delete(key);
+      f75log.warn("Spec em cache deixou de funcionar — revarrendo matriz completa…");
     }
 
     for (const ep of candidates) {
       for (const spec of this.buildAttempts(ep.summary, packet, modes)) {
         const ok = await this.emit(ep, spec, packet, label, logs, dump);
         if (ok) {
-          if (txKey) this.txCache.set(txKey, { endpointKey: ep.key, spec });
+          this.wireCache.set(this.specKey(ep.key, spec), { endpointKey: ep.key, spec });
           this.lastTx = { label, attempts: logs };
           return;
         }
@@ -705,7 +736,7 @@ export class F75Driver {
 
   /** SET feature + GET feature de ACK — mesma tolerância do commandExchange nativo. */
   private async commandExchange(packet: Uint8Array, label: string): Promise<void> {
-    await this.tx(packet, label, "wiredCommand", ["feature", "output"], `wired-${hex2(packet[0])}-${hex2(packet[1])}`);
+    await this.tx(packet, label, "wiredCommand", ["feature", "output"]);
     await this.readFeatureAck(label);
   }
 
@@ -853,7 +884,7 @@ export class F75Driver {
     const zero = new Uint8Array(AULA.commandLength);
     const zeroPages = async (count: number) => {
       for (let i = 0; i < count - 1; i++) {
-        await this.tx(zero, `zero page ${i + 1}/${count}`, "wiredCommand", ["feature", "output"], `wired-zero-${i}`, false);
+        await this.tx(zero, `zero page ${i + 1}/${count}`, "wiredCommand", ["feature", "output"], false);
         await sleep(40);
       }
       await exchange(zero, `zero page final ${count}/${count}`);
@@ -919,7 +950,7 @@ export class F75Driver {
 
   /* --------------------------- receiver: bateria ---------------------------- */
 
-  async queryBattery(): Promise<number | null> {
+  async queryBattery(quiet = false): Promise<number | null> {
     if (this.simMode) {
       f75log.cmd("TX (sim) · battery query");
       await sleep(300);
@@ -931,7 +962,7 @@ export class F75Driver {
     const preferred = this.dongle;
     const maxOut = preferred?.summary.maxOutput ?? 32;
     const lengths = [...new Set([Math.min(Math.max(maxOut, 32), 64), 33, 32])].filter((l) => l <= Math.max(maxOut, 32)).sort((a, b) => b - a);
-    f75log.info(`🔋 Consultando bateria (tamanhos candidatos: ${lengths.join(", ")} B; output máximo declarado da interface preferida: ${maxOut} B)…`);
+    if (!quiet) f75log.info(`🔋 Consultando bateria (tamanhos candidatos: ${lengths.join(", ")} B; output máximo declarado da interface preferida: ${maxOut} B)…`);
 
     const waitBattery = () =>
       new Promise<number | null>((resolve) => {
@@ -947,22 +978,38 @@ export class F75Driver {
 
     for (const length of lengths) {
       for (const withId of [false, true]) {
-        await this.tx(batteryQueryPacket(withId, length), `battery query ${length}B id=${withId ? "sim" : "não"}`, "dongle", ["output", "feature"], `batt-${length}-${withId ? 1 : 0}`, false);
+        await this.tx(batteryQueryPacket(withId, length), `battery query ${length}B id=${withId ? "sim" : "não"}`, "dongle", ["output", "feature"], false);
         const percent = await waitBattery();
         if (percent !== null) return percent;
       }
     }
-    f75log.warn("Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).");
+    if (!quiet) f75log.warn("Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).");
     return null;
+  }
+
+  /**
+   * Auto-calibração do receiver — o nativo consulta a bateria ao abrir o
+   * dongle; aqui a query valida a rota de TX ANTES do primeiro comando real,
+   * de graça. Se a bateria responder, melhor ainda.
+   */
+  private async calibrateDongle(): Promise<void> {
+    if (this.simMode || this.dongleInterfaces.length === 0) return;
+    try {
+      const percent = await this.queryBattery(true);
+      if (percent !== null) f75log.ok(`Receiver calibrado — rota de TX validada e bateria em ${percent}%.`);
+      else f75log.debug("Receiver calibrado: rota de TX aceita pelo SO (bateria sem resposta agora — teclado dormindo?).");
+    } catch (err) {
+      f75log.warn(`Auto-calibração do receiver não conseguiu TX: ${err instanceof Error ? err.message : String(err)} — a matriz re-tenta no próximo comando.`);
+    }
   }
 
   /* ---------------------------- receiver: RGB ------------------------------- */
 
   async applyRGB(settings: RgbSettings): Promise<void> {
     f75log.info(`🎨 Aplicando RGB: ${describeWireless(rgbLEDReport(settings)).replace("LED 0x05 · ", "")}`);
-    await this.tx(rgbCommitReport(), "RGB commit", "dongle", ["output", "feature"], "rgb-commit");
+    await this.tx(rgbCommitReport(), "RGB commit", "dongle", ["output", "feature"]);
     await sleep(50);
-    await this.tx(rgbLEDReport(settings), "RGB LED", "dongle", ["output", "feature"], "rgb-led");
+    await this.tx(rgbLEDReport(settings), "RGB LED", "dongle", ["output", "feature"]);
     f75log.ok("RGB aplicado via receiver 2.4G.");
   }
 
@@ -988,7 +1035,7 @@ export class F75Driver {
     f75log.info(
       `⚡ Aplicando: level ${options.level} · sleep ${options.sleep} · game=${options.game ? 1 : 0} altTab=${options.lockAltTab ? 1 : 0} altF4=${options.lockAltF4 ? 1 : 0} win=${options.lockWin ? 1 : 0}`
     );
-    await this.tx(report, "performance + game mode", "dongle", ["output", "feature"], "perf");
+    await this.tx(report, "performance + game mode", "dongle", ["output", "feature"]);
     f75log.ok("Performance e flags de jogo aplicadas via receiver 2.4G.");
   }
 

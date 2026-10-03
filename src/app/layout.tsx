@@ -14,17 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aula F75 Max no CachyOS — Guia Definitivo",
+  title: "F75 Max Web Driver",
   description:
-    "Instale o driver nativo do Epomaker x Aula F75 Max no CachyOS/Arch Linux: comandos copiáveis, config perfeita de RGB, bateria e Game Mode, ideias de GIFs para o display 128×128 e troubleshooting.",
+    "Driver completo do Epomaker x Aula F75 Max direto no navegador: iluminação, desempenho, display 128×128, bateria e console de pacotes com hexdumps — 100% local via WebHID.",
   keywords: [
     "Aula F75 Max",
-    "CachyOS",
-    "Arch Linux",
     "Epomaker",
+    "WebHID",
+    "driver web",
     "teclado mecânico",
-    "driver Linux",
-    "hidapi",
+    "RGB",
+    "Linux",
   ],
   authors: [{ name: "Z.ai" }],
 };

@@ -1,0 +1,115 @@
+forward-logs-shared.ts:95 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+forward-logs-shared.ts:95 [F75 info] 17:20:13.699  F75 Max Web Driver pronto — 100% local, nada sai do navegador. Logs completos espelhados no console (F12 → filtro [F75]).
+forward-logs-shared.ts:95 [F75  ok ] 17:20:13.739  ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+forward-logs-shared.ts:95 [F75  ok ] 17:20:13.740  Dispositivos já autorizados rebinados automaticamente.
+forward-logs-shared.ts:95 [HMR] connected
+forward-logs-shared.ts:95 [F75 info] 17:20:14.619  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+forward-logs-shared.ts:95 [F75 info] 17:20:16.760  Seletor retornou 4 interface(s) — vinculando as do F75 Max.
+forward-logs-shared.ts:95 [F75  ok ] 17:20:16.760  ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+forward-logs-shared.ts:95 [F75 info] 17:20:16.762  🔋 Consultando bateria (tamanhos candidatos: 32 B; output máximo declarado da interface preferida: 32 B)…
+forward-logs-shared.ts:95 [F75 >>TX] 17:20:16.762  TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+forward-logs-shared.ts:95 [F75 >>TX] 17:20:17.031  TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+forward-logs-shared.ts:95 [F75 warn] 17:20:17.284  Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).
+(anonymous) @ forward-logs-shared.ts:95
+forward-logs-shared.ts:95 [F75 info] 17:20:19.144  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #41E8FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+forward-logs-shared.ts:95 [F75 >>TX] 17:20:19.145  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+forward-logs-shared.ts:95 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+forward-logs-shared.ts:95 [F75 >>TX] 17:20:19.216  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+forward-logs-shared.ts:95 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+forward-logs-shared.ts:95 [F75  ok ] 17:20:19.220  RGB aplicado via receiver 2.4G.
+forward-logs-shared.ts:95 [F75 info] 17:20:22.102  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+forward-logs-shared.ts:95 [F75 >>TX] 17:20:22.102  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+forward-logs-shared.ts:95 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+forward-logs-shared.ts:95 [F75 >>TX] 17:20:22.174  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+forward-logs-shared.ts:95 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+forward-logs-shared.ts:95 [F75  ok ] 17:20:22.178  RGB aplicado via receiver 2.4G.
+logger.ts:68 [F75 info] 17:20:39.829  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+logger.ts:68 [F75 info] 17:20:41.777  Seletor retornou 3 interface(s) — vinculando as do F75 Max.
+logger.ts:68 [F75  ok ] 17:20:41.784  ✔ Cabo · comando 0xFF13 vinculado — AULA F75Max
+logger.ts:68 [F75  ok ] 17:20:41.790  ✔ Cabo · display 0xFF68 vinculado — AULA F75Max
+logger.ts:68 [F75  ok ] 17:20:41.790  ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+logger.ts:68 [F75 info] 17:20:41.794  🔋 Consultando bateria (tamanhos candidatos: 32 B; output máximo declarado da interface preferida: 32 B)…
+logger.ts:68 [F75 >>TX] 17:20:41.794  TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:68 [F75 >>TX] 17:20:42.103  TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:68 [F75 warn] 17:20:42.365  Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).
+(anonymous) @ forward-logs-shared.ts:95
+mirrorConsole @ logger.ts:68
+log @ logger.ts:54
+warn @ logger.ts:60
+queryBattery @ driver.ts:955
+await in queryBattery
+(anonymous) @ F75DriverTool.tsx:138
+await in (anonymous)
+(anonymous) @ F75DriverTool.tsx:97
+(anonymous) @ F75DriverTool.tsx:134
+executeDispatch @ react-dom-client.development.js:20543
+runWithFiberInDEV @ react-dom-client.development.js:986
+processDispatchQueue @ react-dom-client.development.js:20593
+(anonymous) @ react-dom-client.development.js:21164
+batchedUpdates$1 @ react-dom-client.development.js:3377
+dispatchEventForPluginEventSystem @ react-dom-client.development.js:20747
+dispatchEvent @ react-dom-client.development.js:25693
+dispatchDiscreteEvent @ react-dom-client.development.js:25661
+logger.ts:68 [F75 info] 17:20:45.763  🎨 Aplicando RGB: modo 1 "Static (cor fixa)" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+logger.ts:68 [F75 >>TX] 17:20:45.763  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+logger.ts:68 [F75 >>TX] 17:20:45.877  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+logger.ts:68 [F75  ok ] 17:20:45.888  RGB aplicado via receiver 2.4G.
+logger.ts:68 [F75 info] 17:21:00.848  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+logger.ts:68 [F75 info] 17:21:03.087  Seletor retornou 4 interface(s) — vinculando as do F75 Max.
+logger.ts:68 [F75  ok ] 17:21:03.087  ✔ Receiver 2.4G vinculado em 4 interface(s) — canal preferido: 0xff60 (output 32B).
+logger.ts:68 [F75 info] 17:21:03.094  🔋 Consultando bateria (tamanhos candidatos: 32 B; output máximo declarado da interface preferida: 32 B)…
+logger.ts:68 [F75 >>TX] 17:21:03.094  TX output id=0x00 · battery query 32B id=não · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:68 [F75 >>TX] 17:21:03.410  TX output id=0x00 · battery query 32B id=sim · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:68 [F75 warn] 17:21:03.672  Receiver não respondeu a query de bateria (teclado dormindo? aperte qualquer tecla e tente de novo).
+(anonymous) @ forward-logs-shared.ts:95
+mirrorConsole @ logger.ts:68
+log @ logger.ts:54
+warn @ logger.ts:60
+queryBattery @ driver.ts:955
+await in queryBattery
+(anonymous) @ F75DriverTool.tsx:138
+await in (anonymous)
+(anonymous) @ F75DriverTool.tsx:97
+(anonymous) @ F75DriverTool.tsx:134
+executeDispatch @ react-dom-client.development.js:20543
+runWithFiberInDEV @ react-dom-client.development.js:986
+processDispatchQueue @ react-dom-client.development.js:20593
+(anonymous) @ react-dom-client.development.js:21164
+batchedUpdates$1 @ react-dom-client.development.js:3377
+dispatchEventForPluginEventSystem @ react-dom-client.development.js:20747
+dispatchEvent @ react-dom-client.development.js:25693
+dispatchDiscreteEvent @ react-dom-client.development.js:25661
+logger.ts:68 [F75 info] 17:21:14.238  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+logger.ts:68 [F75 >>TX] 17:21:14.238  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+logger.ts:68 [F75 >>TX] 17:21:14.358  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+logger.ts:68 [F75  ok ] 17:21:14.376  RGB aplicado via receiver 2.4G.
+logger.ts:68 [F75 info] 17:21:16.195  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+logger.ts:68 [F75 >>TX] 17:21:16.195  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+logger.ts:68 [F75 >>TX] 17:21:16.317  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+logger.ts:68 [F75  ok ] 17:21:16.332  RGB aplicado via receiver 2.4G.
+logger.ts:68 [F75 info] 17:21:16.871  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+logger.ts:68 [F75 >>TX] 17:21:16.871  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+logger.ts:68 [F75 >>TX] 17:21:16.990  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+logger.ts:68 [F75  ok ] 17:21:17.004  RGB aplicado via receiver 2.4G.
+logger.ts:68 [F75 info] 17:21:18.806  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+logger.ts:68 [F75 >>TX] 17:21:18.806  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+logger.ts:68 [F75 >>TX] 17:21:18.922  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+logger.ts:68 [F75  ok ] 17:21:18.936  RGB aplicado via receiver 2.4G.
+logger.ts:68 [F75 info] 17:21:19.618  🎨 Aplicando RGB: modo 4 "Glittering" · cor #AF69FF · brilho 3/5 · vel 2/5 · dir Direita · colorful=0 · ck=ok
+logger.ts:68 [F75 >>TX] 17:21:19.618  TX output id=0x00 · RGB commit · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB commit (32 bytes)
+logger.ts:68 [F75 >>TX] 17:21:19.734  TX output id=0x00 · RGB LED · 32B payload / 33B na wire · id=0 + pacote 32B → 33B na wire (device sem report IDs — rota prefixed do nativo)
+logger.ts:89 [F75 hex] TX output id=0x00 · RGB LED (32 bytes)
+logger.ts:90 0x0000  05 10 00 04 af 69 ff 00  00 00 00 00 03 02 00 00  |·····i··········|
+0x0010  00 aa 55 00 00 00 00 00  00 00 00 00 00 00 00 34  |··U············4|
+logger.ts:68 [F75  ok ] 17:21:19.753  RGB aplicado via receiver 2.4G.
