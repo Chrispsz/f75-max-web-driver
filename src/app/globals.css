@@ -85,7 +85,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+  --primary: oklch(0.97 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -96,7 +96,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.75 0.11 210);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -125,21 +125,49 @@
     letter-spacing: -0.011em;
   }
   :focus-visible {
-    outline: 2px solid rgb(16 185 129 / 0.6);
+    outline: 2px solid rgb(65 232 255 / 0.55);
     outline-offset: 2px;
   }
 }
 
-/* ---------- F75 driver surfaces ---------- */
+/* ---------- F75 driver surfaces (Linear/Stripe grade) ---------- */
 
 /* Superfície padrão dos cards: hairline border + inner top highlight
    (estilo Linear/Vercel — profundidade sem drop shadow pesado). */
 @utility card-surface {
-  border: 1px solid rgb(255 255 255 / 0.07);
-  background: linear-gradient(to bottom, rgb(24 24 27 / 0.72), rgb(24 24 27 / 0.42));
+  border: 1px solid rgb(255 255 255 / 0.06);
+  background: linear-gradient(to bottom, rgb(24 24 27 / 0.66), rgb(24 24 27 / 0.34));
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.04),
     0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+/* Aurora ambiente da marca (ciano #41E8FF) — wash no topo, assinatura Linear. */
+@utility app-aurora {
+  background:
+    radial-gradient(56% 64% at 50% 0%, rgb(65 232 255 / 0.075), transparent 72%),
+    radial-gradient(90% 46% at 50% -6%, rgb(65 232 255 / 0.04), transparent 62%);
+}
+
+/* Grid técnico sutil que some com a distância (só na abertura da página). */
+@utility app-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.024) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.024) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(72% 64% at 50% 0%, black, transparent 78%);
+  -webkit-mask-image: radial-gradient(72% 64% at 50% 0%, black, transparent 78%);
+}
+
+/* Moldura do simulador da telinha: bezel de device + glow ciano da marca. */
+@utility sim-bezel {
+  border: 1px solid rgb(255 255 255 / 0.09);
+  background: rgb(0 0 0 / 0.9);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+    0 0 0 1px rgb(0 0 0 / 0.6),
+    0 0 32px rgb(65 232 255 / 0.12),
+    0 12px 32px rgb(0 0 0 / 0.55);
 }
 
 .scrollbar-thin {

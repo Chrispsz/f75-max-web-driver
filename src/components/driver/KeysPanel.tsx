@@ -67,7 +67,7 @@ export function KeysPanel({ active }: { active: boolean }) {
             {last ? (
               <div className="flex flex-col items-center gap-2.5">
                 {/* keycap: mesmo stance de tecla mecânica */}
-                <span className="inline-flex min-w-[64px] items-center justify-center rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-800 to-zinc-900 px-4 py-2.5 font-mono text-2xl font-bold text-emerald-300 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08),0_4px_12px_rgba(0,0,0,0.45)]">
+                <span className="inline-flex min-w-[64px] items-center justify-center rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-800 to-zinc-900 px-4 py-2.5 font-mono text-2xl font-bold text-cyan-300 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08),0_4px_12px_rgba(0,0,0,0.45)]">
                   {last.key === " " ? "Space" : last.key}
                 </span>
                 <MonoLine>{[last.code, last.mods, last.time].filter(Boolean).join(" · ")}</MonoLine>

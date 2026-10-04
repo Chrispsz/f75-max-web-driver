@@ -90,6 +90,16 @@ export function DisplayPanel({
     };
   }, [prepared]);
 
+  /** Sem conteúdo: simulador em standby (tela preta), fiel ao device vazio. */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || prepared) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, [prepared]);
+
   /* ------------------------------ relógio ------------------------------- */
 
   /** Sincronismo manual (o automático foi removido: cada sync repinta a
@@ -210,131 +220,149 @@ export function DisplayPanel({
 
       <Card className="card-surface">
         <CardContent className="space-y-5 p-4 sm:p-5">
-          <div className="space-y-2">
-            <FieldLabel>Conteúdo</FieldLabel>
-            <label
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                handleFile(e.dataTransfer.files?.[0] ?? null);
-              }}
-              className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-700 px-4 py-6 text-center transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/[0.03]"
-            >
-              <ImageIcon className="h-5 w-5 text-zinc-500" />
-              <span className="text-xs text-zinc-400">
-                <strong className="text-zinc-200">GIF, PNG, JPG ou WebP</strong> — clique ou arraste aqui
-              </span>
-              <span className="text-[10px] text-zinc-600">convertido pra RGB565 128×128 exatamente como o driver nativo · prévia sem conectar</span>
-              <input
-                type="file"
-                accept="image/gif,image/png,image/jpeg,image/webp"
-                className="sr-only"
-                onChange={(e) => {
-                  handleFile(e.target.files?.[0] ?? null);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => handleGenerate("bounce")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
-                <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Gerar: bola ciano
-              </Button>
-              <Button onClick={() => handleGenerate("plasma")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
-                <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Gerar: plasma gelo
-              </Button>
-            </div>
-            <div className="space-y-1.5 border-t border-zinc-800/70 pt-3">
-              <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza · loop perfeito</FieldLabel>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {READY_ARTS.map((a) => (
-                  <button
-                    key={a.file}
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => loadReadyArt(a)}
-                    className="flex items-center gap-2.5 rounded-md border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-colors hover:border-emerald-500/50 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <img
-                      src={a.file}
-                      alt={`Prévia da arte ${a.name}`}
-                      loading="lazy"
-                      className="h-14 w-14 shrink-0 rounded border border-zinc-800 bg-black [image-rendering:pixelated]"
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-medium text-zinc-200">{a.name}</span>
-                      <span className="block text-[10px] leading-snug text-zinc-500">{a.desc}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {prepared && (
-            <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
-              <div className="space-y-2">
-                {/* mockup da telinha: moldura de device + glow ciano da marca */}
-                <div className="w-fit rounded-2xl border border-zinc-800 bg-black p-1.5 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_0_28px_rgba(65,232,255,0.1),0_8px_24px_rgba(0,0,0,0.5)]">
+          {/* -------------------------------- bento -------------------------------- */}
+          <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)]">
+            {/* coluna esquerda — o SIMULADOR, sempre ligado */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="sim-bezel w-fit rounded-2xl p-2">
+                <div className="relative">
                   <canvas
                     ref={canvasRef}
                     width={128}
                     height={128}
-                    className="h-36 w-36 rounded-lg bg-black [image-rendering:pixelated]"
-                    aria-label="Prévia do conteúdo no display do teclado"
+                    className="h-40 w-40 rounded-lg bg-black [image-rendering:pixelated] sm:h-44 sm:w-44"
+                    aria-label="Simulador do display do teclado (128×128)"
+                    role="img"
                   />
+                  {!prepared && (
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg">
+                      <Monitor className="h-4 w-4 text-zinc-700" />
+                      <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-700">standby</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-center font-mono text-[10px] text-zinc-500">prévia fiel · RGB565 · {prepared.stream.avgFps.toFixed(1)} fps</p>
-                <p className="mx-auto max-w-[168px] truncate text-center text-[10px] text-zinc-600" title={prepared.fileName}>
-                  {prepared.fileName}
+              </div>
+              <div className="flex w-44 flex-col items-center gap-0.5 sm:w-48">
+                <p className="font-mono text-[10px] text-zinc-500">
+                  {prepared ? `RGB565 · ${prepared.stream.avgFps.toFixed(1)} fps` : "128×128 · RGB565"}
+                </p>
+                <p className="max-w-full truncate text-[10px] text-zinc-600" title={prepared?.fileName}>
+                  {prepared?.fileName ?? "aguardando conteúdo"}
                 </p>
               </div>
+            </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <FieldLabel>Ajuste</FieldLabel>
-                  <Segmented
-                    disabled={uploading}
-                    value={fit}
-                    onChange={reencodeWithFit}
-                    options={[
-                      { value: "contain", label: "Conter", title: "Cabe inteira, com bordas" },
-                      { value: "cover", label: "Preencher", title: "Cobre tudo, corta bordas" },
-                      { value: "stretch", label: "Esticar", title: "Força 128×128" },
-                    ]}
+            {/* coluna direita — conteúdo */}
+            <div className="min-w-0 space-y-4">
+              <div className="space-y-2">
+                <FieldLabel>Conteúdo</FieldLabel>
+                <label
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleFile(e.dataTransfer.files?.[0] ?? null);
+                  }}
+                  className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.12] px-4 py-6 text-center transition-colors hover:border-cyan-300/40 hover:bg-cyan-400/[0.03]"
+                >
+                  <ImageIcon className="h-5 w-5 text-zinc-500" />
+                  <span className="text-xs text-zinc-400">
+                    <strong className="text-zinc-200">GIF, PNG, JPG ou WebP</strong> — clique ou arraste aqui
+                  </span>
+                  <span className="text-[10px] text-zinc-600">convertido pra RGB565 128×128 exatamente como o driver nativo · prévia sem conectar</span>
+                  <input
+                    type="file"
+                    accept="image/gif,image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(e) => {
+                      handleFile(e.target.files?.[0] ?? null);
+                      e.target.value = "";
+                    }}
                   />
-                </div>
+                </label>
+              </div>
 
-                <div className="space-y-2">
-                  {uploading || percent > 0 ? (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                        <span className="font-mono">
-                          {progress.sent}/{progress.total} blocos · {percent}%
-                        </span>
-                        <span className="font-mono">{progress.eta > 0 ? `ETA ${progress.eta.toFixed(0)}s` : "—"}</span>
-                      </div>
-                      <Progress value={percent} className="h-1.5" />
-                    </div>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={upload} disabled={!ready || busy !== null} title={!ready ? "Conecte o teclado via cabo pra enviar" : undefined} className="h-9 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
-                      {busy === "upload" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                      Enviar pro slot {slot}
-                    </Button>
-                    {uploading ? (
-                      <Button onClick={cancelUpload} variant="outline" className="h-9 border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20">
-                        <X className="mr-2 h-4 w-4" /> Cancelar
-                      </Button>
-                    ) : (
-                      <Button onClick={clearPrepared} variant="outline" className="h-9 border-zinc-700 bg-transparent text-zinc-400 hover:bg-zinc-800">
-                        <Eraser className="mr-2 h-4 w-4" /> Limpar
-                      </Button>
-                    )}
-                  </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => handleGenerate("bounce")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-white/[0.1] bg-white/[0.03] text-xs text-zinc-300 hover:bg-white/[0.08]">
+                  <Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Gerar: bola ciano
+                </Button>
+                <Button onClick={() => handleGenerate("plasma")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-white/[0.1] bg-white/[0.03] text-xs text-zinc-300 hover:bg-white/[0.08]">
+                  <Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Gerar: plasma gelo
+                </Button>
+              </div>
+
+              <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+                <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza · loop perfeito</FieldLabel>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {READY_ARTS.map((a) => (
+                    <button
+                      key={a.file}
+                      type="button"
+                      disabled={busy !== null}
+                      onClick={() => loadReadyArt(a)}
+                      className="flex items-center gap-2.5 rounded-md border border-white/[0.07] bg-white/[0.03] p-2 text-left transition-colors hover:border-white/[0.16] hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <img
+                        src={a.file}
+                        alt={`Prévia da arte ${a.name}`}
+                        loading="lazy"
+                        className="h-14 w-14 shrink-0 rounded border border-white/[0.08] bg-black [image-rendering:pixelated]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-medium text-zinc-200">{a.name}</span>
+                        <span className="block text-[10px] leading-snug text-zinc-500">{a.desc}</span>
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* ------------------------------- envio ------------------------------- */}
+          <div className="grid gap-4 border-t border-white/[0.06] pt-4 sm:grid-cols-[auto_minmax(0,1fr)]">
+            <div className="space-y-1.5">
+              <FieldLabel>Ajuste</FieldLabel>
+              <Segmented
+                disabled={uploading}
+                value={fit}
+                onChange={reencodeWithFit}
+                options={[
+                  { value: "contain", label: "Conter", title: "Cabe inteira, com bordas" },
+                  { value: "cover", label: "Preencher", title: "Cobre tudo, corta bordas" },
+                  { value: "stretch", label: "Esticar", title: "Força 128×128" },
+                ]}
+              />
+            </div>
+
+            <div className="space-y-2">
+              {uploading || percent > 0 ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                    <span className="font-mono">
+                      {progress.sent}/{progress.total} blocos · {percent}%
+                    </span>
+                    <span className="font-mono">{progress.eta > 0 ? `ETA ${progress.eta.toFixed(0)}s` : "—"}</span>
+                  </div>
+                  <Progress value={percent} className="h-1.5" />
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={upload} disabled={!ready || busy !== null} title={!ready ? "Conecte o teclado via cabo pra enviar" : undefined}>
+                  {busy === "upload" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  Enviar pro slot {slot}
+                </Button>
+                {uploading ? (
+                  <Button onClick={cancelUpload} variant="outline" className="h-9 border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20">
+                    <X className="mr-2 h-4 w-4" /> Cancelar
+                  </Button>
+                ) : (
+                  <Button onClick={clearPrepared} variant="outline" disabled={!prepared} className="h-9 border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.08]">
+                    <Eraser className="mr-2 h-4 w-4" /> Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -355,7 +383,7 @@ export function DisplayPanel({
               disabled={!ready || busy !== null || uploading}
               variant="outline"
               size="sm"
-              className="h-8 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800"
+              className="h-8 border-white/[0.1] bg-white/[0.03] text-xs text-zinc-300 hover:bg-white/[0.08]"
               title="Envia 1 frame preto pro slot selecionado — apaga o GIF que está na telinha pelo próprio caminho do upload"
             >
               {busy === "blank" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Square className="mr-1.5 h-3.5 w-3.5" />}
@@ -372,13 +400,13 @@ export function DisplayPanel({
       <Card className="card-surface">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
           <div className="flex items-center gap-2.5">
-            <Clock className="h-4 w-4 text-emerald-400" />
+            <Clock className="h-4 w-4 text-cyan-300" />
             <div>
               <p className="text-xs font-semibold">Relógio do display</p>
               <p className="text-[11px] text-zinc-500">sincronização manual — sem repintura automática</p>
             </div>
           </div>
-          <Button onClick={() => void syncClock()} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
+          <Button onClick={() => void syncClock()} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 border-white/[0.1] bg-white/[0.03] text-xs text-zinc-300 hover:bg-white/[0.08]">
             {busy === "clock" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
             Sincronizar agora
           </Button>

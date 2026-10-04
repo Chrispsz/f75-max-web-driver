@@ -231,20 +231,18 @@ export default function F75App() {
           : "Desconectado";
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30">
-      {/* luz ambiente — wash esmeralda no topo, assinatura dark-mode Linear */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(16,185,129,0.07),transparent_70%)]"
-      />
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-cyan-500/30">
+      {/* ambiente Linear: aurora ciano da marca + grid técnico que some com a distância */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-96 app-aurora" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-96 app-grid" />
       {/* ------------------------------- topbar ------------------------------- */}
-      <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-800/80 px-4 sm:px-5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10">
-          <Keyboard className="h-4 w-4 text-emerald-400" />
+      <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] px-4 sm:px-5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.09] bg-white/[0.05] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06)]">
+          <Keyboard className="h-4 w-4 text-zinc-200" />
         </span>
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-bold leading-tight">
-            F75 Max <span className="text-emerald-400">Web Driver</span>
+          <h1 className="truncate text-[13px] font-semibold leading-tight tracking-tight">
+            F75 Max <span className="font-normal text-zinc-600">/</span> <span className="text-cyan-300">Web Driver</span>
           </h1>
           <p className="truncate text-[10px] leading-tight text-zinc-500">protocolo nativo portado · 100% local no navegador</p>
         </div>
@@ -256,7 +254,6 @@ export default function F75App() {
             </Chip>
           )}
           <Chip ok={anyConnected} title="Estado da conexão">
-            <span className={`h-1.5 w-1.5 rounded-full ${anyConnected ? "bg-emerald-400" : "bg-zinc-600"}`} />
             {connectionLabel}
           </Chip>
         </div>
@@ -264,21 +261,23 @@ export default function F75App() {
 
       <div className="relative z-10 flex min-h-0 flex-1">
         {/* ------------------------------ sidebar ------------------------------ */}
-        <aside className="hidden w-56 shrink-0 flex-col justify-between border-r border-zinc-800/80 p-3 md:flex">
-          <nav aria-label="Seções do driver" className="space-y-1">
+        <aside className="hidden w-56 shrink-0 flex-col justify-between border-r border-white/[0.06] p-3 md:flex">
+          <nav aria-label="Seções do driver" className="space-y-0.5">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setSection(s.id)}
                 aria-current={section === s.id ? "page" : undefined}
-                className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                className={`relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
                   section === s.id
-                    ? "bg-emerald-500/[0.09] font-semibold text-emerald-300"
-                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    ? "bg-white/[0.06] font-medium text-zinc-100 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04)]"
+                    : "text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-200"
                 }`}
               >
-                {section === s.id && <span aria-hidden="true" className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-emerald-400" />}
+                {section === s.id && (
+                  <span aria-hidden="true" className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-cyan-300 shadow-[0_0_6px_rgba(65,232,255,0.7)]" />
+                )}
                 <s.icon className="h-4 w-4 shrink-0" />
                 {s.label}
               </button>
@@ -303,7 +302,7 @@ export default function F75App() {
 
         {/* --------------------------- conteúdo ------------------------------ */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <nav aria-label="Seções do driver" className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-800/80 px-3 py-2 md:hidden">
+          <nav aria-label="Seções do driver" className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.06] px-3 py-2 md:hidden">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
@@ -312,8 +311,8 @@ export default function F75App() {
                 aria-current={section === s.id ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
                   section === s.id
-                    ? "border-emerald-500/50 bg-emerald-500/10 font-semibold text-emerald-300"
-                    : "border-zinc-800 bg-zinc-900/60 text-zinc-400"
+                    ? "border-white/[0.14] bg-white/[0.08] font-medium text-zinc-100"
+                    : "border-white/[0.06] bg-white/[0.02] text-zinc-500"
                 }`}
               >
                 <s.icon className="h-3.5 w-3.5" />
@@ -339,8 +338,8 @@ export default function F75App() {
                 </div>
               )}
               {supported && inIframe && (
-                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/80">
-                  <Cable className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                <div className="flex items-start gap-2 rounded-lg border border-cyan-300/25 bg-cyan-400/[0.05] px-3 py-2.5 text-xs leading-relaxed text-cyan-100/80">
+                  <Cable className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
                   <span>
                     Rodando em iframe: se o seletor de dispositivos não abrir, use <strong>Open in New Tab</strong> acima do preview.
                   </span>
@@ -383,7 +382,7 @@ export default function F75App() {
       </div>
 
       {/* ----------------------------- status bar ----------------------------- */}
-      <footer className="relative z-10 shrink-0 border-t border-zinc-800/80 bg-zinc-950">
+      <footer className="relative z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950">
         <div className="scrollbar-thin flex items-center gap-2 overflow-x-auto px-4 py-2 text-[11px] text-zinc-500 sm:px-5">
           <Chip ok={status.wiredCommand} title="Cabo USB-C · canal de comando 0xFF13">cabo·cmd</Chip>
           <Chip ok={status.wiredDisplay} title="Cabo USB-C · canal de display 0xFF68">cabo·disp</Chip>
@@ -435,20 +434,20 @@ function DevicePanel(props: {
           </div>
 
           {status.dongle && (
-            <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+            <div className="space-y-2 rounded-lg border border-white/[0.06] bg-black/40 p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold text-zinc-300">Rota de comando do receiver</p>
                 <Button
                   onClick={props.onProbe}
                   disabled={anyBusy(busy)}
                   variant="outline"
-                  className="h-7 border-zinc-700 px-2.5 text-[11px] text-zinc-300 hover:bg-zinc-800"
+                  className="h-7 border-white/[0.1] bg-white/[0.03] px-2.5 text-[11px] text-zinc-300 hover:bg-white/[0.08]"
                 >
                   {busy === "probe" ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <RadioTower className="mr-1.5 h-3 w-3" />}
                   Sondar rotas
                 </Button>
               </div>
-              <p className={`font-mono text-[10px] leading-relaxed ${routeLabel ? "text-emerald-400" : "text-zinc-500"}`}>
+              <p className={`font-mono text-[10px] leading-relaxed ${routeLabel ? "text-cyan-300" : "text-zinc-500"}`}>
                 {routeLabel ?? "não validada — a sonda envia a query de bateria por cada rota candidata; a resposta real do teclado escolhe a rota usada por RGB, desempenho e bateria"}
               </p>
             </div>
@@ -459,16 +458,16 @@ function DevicePanel(props: {
           </p>
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={props.onConnect} disabled={anyBusy(busy)} className="h-9 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
+            <Button onClick={props.onConnect} disabled={anyBusy(busy)} className="h-9">
               {busy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plug className="mr-2 h-4 w-4" />}
               Conectar
             </Button>
-            <Button onClick={props.onReconnect} disabled={anyBusy(busy)} variant="outline" className="h-9 border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
+            <Button onClick={props.onReconnect} disabled={anyBusy(busy)} variant="outline" className="h-9 border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:bg-white/[0.08]">
               {busy === "reconnect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Reconectar
             </Button>
             {anyConnected && (
-              <Button onClick={props.onDisconnect} disabled={anyBusy(busy)} variant="outline" className="h-9 border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
+              <Button onClick={props.onDisconnect} disabled={anyBusy(busy)} variant="outline" className="h-9 border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:bg-white/[0.08]">
                 <PlugZap className="mr-2 h-4 w-4" /> Desconectar
               </Button>
             )}
@@ -490,7 +489,7 @@ function DevicePanel(props: {
             disabled={anyBusy(busy) || !wiredReady}
             variant="outline"
             className={`h-9 ${
-              resetArmed ? "border-rose-500 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25" : "border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800"
+              resetArmed ? "border-rose-500 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25" : "border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:bg-white/[0.08]"
             }`}
           >
             {busy === "reset" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -552,8 +551,8 @@ function LightingPanel(props: {
                   onClick={() => setRgb({ mode: m.id })}
                   className={`min-h-[36px] rounded-md border px-2 py-1.5 text-xs transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
                     rgb.mode === m.id
-                      ? "border-emerald-500/60 bg-emerald-500/15 font-semibold text-emerald-300"
-                      : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                      ? "border-white/[0.14] bg-white/[0.09] font-medium text-zinc-100 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.07)]"
+                      : "border-transparent bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
                   }`}
                 >
                   {m.name}
@@ -573,14 +572,14 @@ function LightingPanel(props: {
                   disabled={!canSend}
                   onClick={() => setRgb({ color: hexToInt(c.hex) })}
                   className={`h-8 w-8 rounded-lg border-2 transition-transform disabled:cursor-not-allowed disabled:opacity-40 ${
-                    rgb.color === hexToInt(c.hex) ? "scale-110 border-emerald-400" : "border-zinc-700 hover:scale-105"
+                    rgb.color === hexToInt(c.hex) ? "scale-110 border-cyan-300 shadow-[0_0_10px_rgba(65,232,255,0.35)]" : "border-white/[0.12] hover:scale-105"
                   }`}
                   style={{ backgroundColor: c.hex }}
                   aria-label={`Cor ${c.name} ${c.hex}`}
                 />
               ))}
               <Label
-                className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/60 px-2 text-[11px] text-zinc-400 hover:border-zinc-600 ${!canSend ? "pointer-events-none opacity-40" : ""}`}
+                className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.03] px-2 text-[11px] text-zinc-400 hover:border-white/[0.2] ${!canSend ? "pointer-events-none opacity-40" : ""}`}
                 title="Cor personalizada"
               >
                 <input
@@ -600,14 +599,14 @@ function LightingPanel(props: {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <FieldLabel>Brilho</FieldLabel>
-                <span className="font-mono text-[11px] text-emerald-400">{rgb.brightness}/5</span>
+                <span className="font-mono text-[11px] text-zinc-300">{rgb.brightness}/5</span>
               </div>
               <Slider value={[rgb.brightness]} min={1} max={5} step={1} disabled={!canSend} onValueChange={([v]) => setRgb({ brightness: v })} aria-label="Brilho" />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <FieldLabel>Velocidade</FieldLabel>
-                <span className="font-mono text-[11px] text-emerald-400">{rgb.speed}/5</span>
+                <span className="font-mono text-[11px] text-zinc-300">{rgb.speed}/5</span>
               </div>
               <Slider value={[rgb.speed]} min={1} max={5} step={1} disabled={!canSend} onValueChange={([v]) => setRgb({ speed: v })} aria-label="Velocidade" />
             </div>
@@ -623,7 +622,7 @@ function LightingPanel(props: {
                 options={DIRECTIONS.map((d, i) => ({ value: i, label: d }))}
               />
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
               <div>
                 <p className="text-xs font-semibold">Colorful</p>
                 <p className="text-[11px] text-zinc-500">arco-íris independente da cor</p>
@@ -632,7 +631,7 @@ function LightingPanel(props: {
             </div>
           </div>
 
-          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 w-full bg-emerald-500 text-zinc-950 hover:bg-emerald-400 sm:w-auto">
+          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 w-full sm:w-auto">
             {busy === "rgb" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Palette className="mr-2 h-4 w-4" />}
             Aplicar iluminação
           </Button>
@@ -687,7 +686,7 @@ function PerformancePanel(props: {
             <Segmented disabled={!canSend} value={perf.sleep} onChange={(v) => setPerf({ sleep: v })} options={SLEEP_OPTIONS.map((s) => ({ value: s.id, label: s.name }))} />
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
             <div>
               <p className="text-xs font-semibold">Modo jogo</p>
               <p className="text-[11px] text-zinc-500">trava a tecla Win (LED branco fixo) — comportamento do firmware</p>
@@ -695,7 +694,7 @@ function PerformancePanel(props: {
             <Switch checked={perf.game} disabled={!canSend} onCheckedChange={(v) => setPerf({ game: v })} aria-label="Modo jogo" />
           </div>
 
-          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
+          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10">
             {busy === "perf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
             Aplicar
           </Button>

@@ -4,7 +4,8 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Chip de estado (endpoint, bateria, flag). Com onClick vira botão. */
+/** Chip de estado (endpoint, bateria, flag). Com onClick vira botão.
+ *  Monocromático (Cal.com/Linear): o estado vive no dot de sinal, não na pílula. */
 export function Chip({
   ok,
   children,
@@ -24,23 +25,28 @@ export function Chip({
       onClick={onClick}
       title={title}
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-        ok === undefined
-          ? "border-zinc-700 bg-zinc-900 text-zinc-300"
-          : ok
-            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-            : "border-zinc-800 bg-zinc-900/60 text-zinc-500",
-        onClick && !ok && "hover:border-zinc-600 hover:text-zinc-300",
-        onClick && ok === false && "hover:border-emerald-500/40 hover:text-emerald-300",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition-colors",
+        ok === false && "text-zinc-500",
+        onClick && "hover:border-white/[0.16] hover:bg-white/[0.08] hover:text-zinc-100",
         className
       )}
     >
+      {ok !== undefined && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            ok ? "bg-cyan-300 shadow-[0_0_6px_rgba(65,232,255,0.75)]" : "bg-zinc-600"
+          )}
+        />
+      )}
       {children}
     </Tag>
   );
 }
 
-/** Cabeçalho de seção: ícone + título + descrição + slot à direita. */
+/** Cabeçalho de seção: ícone + título + descrição + slot à direita.
+ *  Ícone neutro (hairline) — cor é sinal, não decoração. */
 export function SectionHeader({
   icon: Icon,
   title,
@@ -55,11 +61,11 @@ export function SectionHeader({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10">
-          <Icon className="h-4 w-4 text-emerald-400" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.05)]">
+          <Icon className="h-4 w-4 text-zinc-300" />
         </span>
         <div>
-          <h2 className="text-sm font-bold leading-tight sm:text-base">{title}</h2>
+          <h2 className="text-[15px] font-semibold leading-tight tracking-tight sm:text-base">{title}</h2>
           {desc && <p className="text-xs leading-tight text-zinc-500">{desc}</p>}
         </div>
       </div>
@@ -82,7 +88,8 @@ export function MonoLine({ children, className }: { children: ReactNode; classNa
   );
 }
 
-/** Controle segmentado (botões exclusivos) usado em toda a UI. */
+/** Controle segmentado (botões exclusivos) usado em toda a UI.
+ *  Ativo = seleção neutra iluminada (Linear), nunca pílula colorida. */
 export function Segmented<T extends string | number>({
   options,
   value,
@@ -97,7 +104,7 @@ export function Segmented<T extends string | number>({
   className?: string;
 }) {
   return (
-    <div role="group" className={cn("flex flex-wrap gap-1.5", className)}>
+    <div role="group" className={cn("flex flex-wrap gap-1", className)}>
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -109,8 +116,8 @@ export function Segmented<T extends string | number>({
           className={cn(
             "min-h-[32px] rounded-md border px-2.5 py-1 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
             o.value === value
-              ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
-              : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+              ? "border-white/[0.14] bg-white/[0.09] text-zinc-100 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.07)]"
+              : "border-transparent bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
           )}
         >
           {o.label}
@@ -137,7 +144,7 @@ export function FieldLabel({ children }: { children: ReactNode }) {
 /** Bateria: ícone SVG + % com cor por nível. */
 export function BatteryGauge({ percent, compact }: { percent: number | null; compact?: boolean }) {
   const color =
-    percent === null ? "text-zinc-500" : percent <= 20 ? "text-rose-400" : percent <= 50 ? "text-amber-400" : "text-emerald-400";
+    percent === null ? "text-zinc-500" : percent <= 20 ? "text-rose-400" : percent <= 50 ? "text-amber-400" : "text-cyan-300";
   return (
     <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] ${color}`}>
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

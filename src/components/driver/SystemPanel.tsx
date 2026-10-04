@@ -16,7 +16,7 @@ const EMPTY: F75LogEntry[] = [];
 
 const LEVEL_STYLE: Record<LogLevel, string> = {
   info: "text-zinc-300",
-  ok: "text-emerald-400",
+  ok: "text-cyan-300",
   warn: "text-amber-400",
   err: "text-rose-400",
   cmd: "text-sky-400",
@@ -26,7 +26,7 @@ const LEVEL_STYLE: Record<LogLevel, string> = {
 
 const LEVEL_BADGE: Record<LogLevel, string> = {
   info: "bg-zinc-800 text-zinc-400",
-  ok: "bg-emerald-500/15 text-emerald-400",
+  ok: "bg-cyan-500/15 text-cyan-300",
   warn: "bg-amber-500/15 text-amber-400",
   err: "bg-rose-500/15 text-rose-400",
   cmd: "bg-sky-500/15 text-sky-400",
@@ -120,7 +120,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
                   <tbody className="text-zinc-400">
                     {diag.endpoints.map((ep) => (
                       <tr key={ep.key} className="border-t border-zinc-800/60">
-                        <td className="py-1.5 pr-3 text-emerald-400/90">{ep.role}</td>
+                        <td className="py-1.5 pr-3 text-cyan-300/90">{ep.role}</td>
                         <td className="max-w-[140px] truncate py-1.5 pr-3" title={ep.product}>
                           {ep.product}
                         </td>
@@ -137,7 +137,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
                 </table>
               </div>
               {diag.dongleRoute && (
-                <p className="font-mono text-[10px] leading-relaxed text-emerald-400/90" title="Rota validada pela resposta real do teclado na sonda de bateria">
+                <p className="font-mono text-[10px] leading-relaxed text-cyan-300/90" title="Rota validada pela resposta real do teclado na sonda de bateria">
                   rota do receiver: {diag.dongleRoute}
                 </p>
               )}
@@ -158,7 +158,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
                         <td className="py-1.5 pr-3">{a.mode}</td>
                         <td className="py-1.5 pr-3">id {a.reportId}</td>
                         <td className="py-1.5 pr-3 text-zinc-500">{a.wire}</td>
-                        <td className={cn("py-1.5", a.result.startsWith("✔") ? "text-emerald-400" : a.result === "…" ? "text-zinc-500" : "text-rose-400/90")}>
+                        <td className={cn("py-1.5", a.result.startsWith("✔") ? "text-cyan-300" : a.result === "…" ? "text-zinc-500" : "text-rose-400/90")}>
                           {a.result}
                         </td>
                       </tr>
@@ -217,7 +217,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
                 type="button"
                 onClick={() => setFilter(f.id)}
                 className={`min-h-[28px] rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
-                  filter === f.id ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300" : "border-zinc-800 bg-zinc-900/60 text-zinc-500 hover:text-zinc-300"
+                  filter === f.id ? "border-white/[0.14] bg-white/[0.09] text-zinc-100" : "border-transparent bg-white/[0.03] text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300"
                 }`}
               >
                 {f.label}

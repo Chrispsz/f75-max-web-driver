@@ -55,3 +55,8 @@ server.log
 # artefatos internos de sessão
 tool-results/
 dev.log
+
+# artefatos locais (não-publicáveis)
+/worklog.md
+/db/
+/upload/
