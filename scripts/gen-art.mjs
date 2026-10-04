@@ -337,68 +337,6 @@ function pulseEq() {
   return out;
 }
 
-/* ------------------------ 4. Aurora ciano (90 frames) ---------------------- */
-function auroraCiano() {
-  const FRAMES = 90;
-  // starfield determinístico
-  const rnd = mulberry(0xf75);
-  const stars = Array.from({ length: 26 }, () => ({
-    x: Math.floor(rnd() * W),
-    y: Math.floor(rnd() * H),
-    phase: Math.floor(rnd() * 45) * 2, // múltiplo de 2π no loop → seamless
-  }));
-
-  const out = [];
-  for (let f = 0; f < FRAMES; f++) {
-    const t = (f / FRAMES) * TAU;
-    const fr = newFrame();
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        // 4 ondas com períodos inteiros → loop perfeito
-        const v =
-          Math.sin((x / W) * TAU * 2 + t) +
-          Math.sin((y / H) * TAU * 1.5 - t) * 0.8 +
-          Math.sin(((x + y) / (W + H)) * TAU * 2 + t * 2) * 0.5 +
-          Math.sin((x / W) * TAU * 3 - t) * 0.3;
-        const n = (v / 2.6 + 1) / 2; // 0..1
-        // posterização em bandas (estética pixelart)
-        let name;
-        if (n > 0.88) name = "WHITE";
-        else if (n > 0.76) name = "CYAN_HI";
-        else if (n > 0.6) name = "CYAN";
-        else if (n > 0.46) name = "CYAN_DIM";
-        else if (n > 0.33) name = "GRAY2";
-        else if (n > 0.22) name = "GRAY1";
-        else name = "BG";
-        px(fr, x, y, name);
-      }
-    }
-    // estrelas prateadas piscando (fase inteira → seamless)
-    for (const s of stars) {
-      const tw = Math.sin(t + s.phase);
-      if (tw > 0.3) px(fr, s.x, s.y, tw > 0.85 ? "WHITE" : "SILVER");
-    }
-    // estrela cadente: 1 travessia por loop (só existe dentro do loop → seamless)
-    const mt = (f / FRAMES - 0.55) / 0.2; // ativa entre 55% e 75% do loop
-    if (mt >= 0 && mt <= 1) {
-      const sx = Math.round(10 + mt * 96);
-      const sy = Math.round(14 + mt * 52);
-      for (let i = 0; i < 7; i++) px(fr, sx - i * 2, sy - i, i < 2 ? "WHITE" : i < 4 ? "SILVER" : "GRAY3");
-    }
-    // moldura fina
-    for (let x = 0; x < W; x++) {
-      px(fr, x, 0, "GRAY1");
-      px(fr, x, 127, "GRAY1");
-    }
-    for (let y = 0; y < H; y++) {
-      px(fr, 0, y, "GRAY1");
-      px(fr, 127, y, "GRAY1");
-    }
-    out.push(fr);
-  }
-  return out;
-}
-
 /* ------------------------------- encoder ---------------------------------- */
 const DELAY = 66; // ms → vira 7 centiseconds no GIF ≈ 14 fps (sweet spot do device)
 
@@ -422,7 +360,6 @@ mkdirSync("public/art", { recursive: true });
 writeArt(f75Shine(), "public/art/f75-shine.gif");
 writeArt(matrixCiano(), "public/art/matrix-ciano.gif");
 writeArt(pulseEq(), "public/art/pulse-eq.gif");
-writeArt(auroraCiano(), "public/art/aurora-ciano.gif");
 console.log(
   "paleta 565-exata:",
   Object.entries(PAL)

@@ -374,3 +374,16 @@ Work Log:
 
 Stage Summary:
 - Pack final: F75 shine, Matrix ciano, Pulso EQ, Aurora ciano — todos com preview na UI e loop perfeito.
+---
+Task ID: 20
+Agent: Z.ai Code (main)
+Task: Remover a arte "Aurora ciano" do pack (usuário confirmou: "essa tambem").
+
+Work Log:
+- DisplayPanel.tsx: READY_ARTS reduzido a 3 (shine, matrix, eq); grid lg:grid-cols-4 → lg:grid-cols-3 (3 cards = 1 linha completa no desktop, sem lacuna).
+- gen-art.mjs: função auroraCiano() + writeArt dela removidos (mulberry() mantido — usado por shine/matrix).
+- public/art/aurora-ciano.gif apagado; gen-art.mjs reexecutado: gera só os 3 GIFs restantes (72/163/119 KB).
+- Validação: eslint limpo; dev.log sem erros; HTTP 404 em /art/aurora-ciano.gif e 200 em /art/f75-shine.gif; Agent Browser (1440px: 3 cards em 1 linha · 390px: empilhados), 0 erros de página/console.
+
+Stage Summary:
+- Pack final: F75 shine, Matrix ciano, Pulso EQ. Aurora ciano, F75 badge e Vórtice totalmente removidos (UI + GIFs + geradores). Se quiser alguma de volta, o design está documentado no histórico do worklog e é fácil regerar.
