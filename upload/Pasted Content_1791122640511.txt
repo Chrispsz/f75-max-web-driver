@@ -1,0 +1,405 @@
+[11:03:29.510] INFO  F75 Max Web Driver v6 pronto — protocolo nativo portado, RGB/desempenho via 2.4G ou cabo, slots de display e rota validada por sonda. 100% local. Console espelhado aqui e no F12 (filtro [F75]).
+[11:03:29.518] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xc/0x1/0xd/0xffff · reportIds NUMERADOS · out — · feat —
+[11:03:29.519] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+[11:03:29.520] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff60 · reportIds ausentes · out 0x00:32B · feat —
+[11:03:29.521] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0xff59 · reportIds ausentes · out 0x00:64B · feat —
+[11:03:29.522] DEBUG Interface dongle aberta: 2.4G Dongle · pages 0x1 · reportIds ausentes · out — · feat —
+[11:03:29.522] OK    ✔ Receiver 2.4G vinculado em 5 interface(s) — canal preferido: 0xff60 (output 32B).
+[11:03:29.522] CMD   TX output · probe bateria · 0xff60 · output 32B · 32B payload → 32B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)
+[11:03:29.522] DEBUG TX output · probe bateria · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+[11:03:29.523] OK    Dispositivos já autorizados rebinados automaticamente.
+[11:03:29.531] DEBUG ✔ output aceito pelo SO · probe bateria · 0xff60 · output 32B (processamento pelo teclado só a sonda prova)
+[11:03:29.902] CMD   TX output · probe bateria · 0xff59 · output 64B · 32B payload → 32B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)
+[11:03:29.903] DEBUG TX output · probe bateria · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+[11:03:29.904] DEBUG ✔ output aceito pelo SO · probe bateria · 0xff59 · output 64B (processamento pelo teclado só a sonda prova)
+[11:03:29.904] RX    RX receiver (id=0x00, 64B): 0F 01 01 11 00 00 00 00 00 00 00 00 00 00 00 00 …
+[11:03:30.282] CMD   TX output · probe bateria · 0xff59 · output padded 64B · 64B payload → 64B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)
+[11:03:30.283] DEBUG TX output · probe bateria · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+[11:03:30.284] DEBUG ✔ output aceito pelo SO · probe bateria · 0xff59 · output padded 64B (processamento pelo teclado só a sonda prova)
+[11:03:30.285] RX    RX receiver (id=0x00, 64B): 0F 01 01 11 00 00 00 00 00 00 00 00 00 00 00 00 …
+[11:03:30.645] INFO  Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…
+[11:03:30.663] DEBUG Sonda de rotas concluída sem resposta — RGB usará a melhor rota candidata; re-sonda a cada clique em bateria.
+[11:03:32.442] INFO  Seletor retornou 4 interface(s) — vinculando as do F75 Max.
+[11:03:32.442] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): SONiX AULA F75Max
+[11:03:32.442] DEBUG Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): SONiX AULA F75Max
+[11:03:32.443] DEBUG Interface wiredCommand aberta: SONiX AULA F75Max · pages 0xff13 · reportIds ausentes · out 0x00:64B · feat 0x00:64B
+[11:03:32.444] OK    ✔ Cabo · comando 0xFF13 vinculado — SONiX AULA F75Max
+[11:03:32.444] DEBUG Interface wiredDisplay aberta: SONiX AULA F75Max · pages 0xff68 · reportIds ausentes · out 0x00:4096B · feat —
+[11:03:32.444] OK    ✔ Cabo · display 0xFF68 vinculado — SONiX AULA F75Max
+[11:03:32.444] OK    ✔ Receiver 2.4G vinculado em 5 interface(s) — canal preferido: 0xff60 (output 32B).
+[11:03:32.444] CMD   TX output · probe bateria · 0xff60 · output 32B · 32B payload → 32B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)
+[11:03:32.444] DEBUG TX output · probe bateria · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+[11:03:32.450] DEBUG ✔ output aceito pelo SO · probe bateria · 0xff60 · output 32B (processamento pelo teclado só a sonda prova)
+[11:03:32.824] CMD   TX output · probe bateria · 0xff59 · output 64B · 32B payload → 32B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)
+[11:03:32.825] DEBUG TX output · probe bateria · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+[11:03:32.826] DEBUG ✔ output aceito pelo SO · probe bateria · 0xff59 · output 64B (processamento pelo teclado só a sonda prova)
+[11:03:32.826] RX    RX receiver (id=0x00, 64B): 0F 01 01 11 00 00 00 00 00 00 00 00 00 00 00 00 …
+[11:03:33.204] CMD   TX output · probe bateria · 0xff59 · output padded 64B · 64B payload → 64B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)
+[11:03:33.205] DEBUG TX output · probe bateria · primeiros bytes: 20 01 00 00 00 00 00 00 00 00 00 00
+[11:03:33.206] DEBUG ✔ output aceito pelo SO · probe bateria · 0xff59 · output padded 64B (processamento pelo teclado só a sonda prova)
+[11:03:33.207] RX    RX receiver (id=0x00, 64B): 0F 01 01 11 00 00 00 00 00 00 00 00 00 00 00 00 …
+[11:03:33.585] DEBUG Sonda de rotas concluída sem resposta — RGB usará a melhor rota candidata; re-sonda a cada clique em bateria.
+[11:03:34.548] INFO  · Apagando memória de display
+[11:03:34.548] CMD   TX feature id=0x00 · reset · clear display memory · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.549] DEBUG TX feature id=0x00 · reset · clear display memory (64 bytes)
+0x0000  04 19 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.556] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · clear display memory
+[11:03:34.558] RX    GET feature id=0x00 · reset · clear display memory · 64B
+[11:03:34.558] DEBUG GET feature · reset · clear display memory (64 bytes)
+0x0000  04 19 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.558] CMD   TX feature id=0x00 · reset · clear slots · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.558] DEBUG TX feature id=0x00 · reset · clear slots (64 bytes)
+0x0000  04 15 00 00 00 00 00 00  08 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.561] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · clear slots
+[11:03:34.564] RX    GET feature id=0x00 · reset · clear slots · 64B
+[11:03:34.564] DEBUG GET feature · reset · clear slots (64 bytes)
+0x0000  04 15 00 01 00 00 00 00  08 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.564] CMD   TX feature id=0x00 · zero page 1/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.564] DEBUG TX feature id=0x00 · zero page 1/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.567] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 1/8
+[11:03:34.607] CMD   TX feature id=0x00 · zero page 2/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.607] DEBUG TX feature id=0x00 · zero page 2/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.609] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 2/8
+[11:03:34.649] CMD   TX feature id=0x00 · zero page 3/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.649] DEBUG TX feature id=0x00 · zero page 3/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.651] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 3/8
+[11:03:34.691] CMD   TX feature id=0x00 · zero page 4/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.691] DEBUG TX feature id=0x00 · zero page 4/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.693] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 4/8
+[11:03:34.733] CMD   TX feature id=0x00 · zero page 5/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.733] DEBUG TX feature id=0x00 · zero page 5/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.735] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 5/8
+[11:03:34.775] CMD   TX feature id=0x00 · zero page 6/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.775] DEBUG TX feature id=0x00 · zero page 6/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.777] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 6/8
+[11:03:34.817] CMD   TX feature id=0x00 · zero page 7/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.817] DEBUG TX feature id=0x00 · zero page 7/8 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.819] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 7/8
+[11:03:34.859] CMD   TX feature id=0x00 · zero page final 8/8 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.859] DEBUG TX feature id=0x00 · zero page final 8/8 (64 bytes)
+0x0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.861] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page final 8/8
+[11:03:34.864] RX    GET feature id=0x00 · zero page final 8/8 · 64B
+[11:03:34.864] DEBUG GET feature · zero page final 8/8 (64 bytes)
+0x0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.864] CMD   TX feature id=0x00 · reset · commit display · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.864] DEBUG TX feature id=0x00 · reset · commit display (64 bytes)
+0x0000  04 02 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.867] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · commit display
+[11:03:34.870] RX    GET feature id=0x00 · reset · commit display · 64B
+[11:03:34.870] DEBUG GET feature · reset · commit display (64 bytes)
+0x0000  04 02 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.870] INFO  · Resetando keymap e macros
+[11:03:34.870] CMD   TX feature id=0x00 · reset · abrir sessão keymap · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.870] DEBUG TX feature id=0x00 · reset · abrir sessão keymap (64 bytes)
+0x0000  04 18 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.873] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · abrir sessão keymap
+[11:03:34.876] RX    GET feature id=0x00 · reset · abrir sessão keymap · 64B
+[11:03:34.876] DEBUG GET feature · reset · abrir sessão keymap (64 bytes)
+0x0000  04 18 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.876] CMD   TX feature id=0x00 · reset · keymap header · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.876] DEBUG TX feature id=0x00 · reset · keymap header (64 bytes)
+0x0000  04 11 00 00 00 00 00 00  09 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.879] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · keymap header
+[11:03:34.882] RX    GET feature id=0x00 · reset · keymap header · 64B
+[11:03:34.882] DEBUG GET feature · reset · keymap header (64 bytes)
+0x0000  04 11 00 01 00 00 00 00  09 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:34.882] CMD   TX feature id=0x00 · zero page 1/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.882] DEBUG TX feature id=0x00 · zero page 1/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.885] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 1/9
+[11:03:34.925] CMD   TX feature id=0x00 · zero page 2/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.925] DEBUG TX feature id=0x00 · zero page 2/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.927] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 2/9
+[11:03:34.967] CMD   TX feature id=0x00 · zero page 3/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:34.967] DEBUG TX feature id=0x00 · zero page 3/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:34.969] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 3/9
+[11:03:35.009] CMD   TX feature id=0x00 · zero page 4/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.009] DEBUG TX feature id=0x00 · zero page 4/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.011] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 4/9
+[11:03:35.051] CMD   TX feature id=0x00 · zero page 5/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.051] DEBUG TX feature id=0x00 · zero page 5/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.053] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 5/9
+[11:03:35.093] CMD   TX feature id=0x00 · zero page 6/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.094] DEBUG TX feature id=0x00 · zero page 6/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.096] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 6/9
+[11:03:35.136] CMD   TX feature id=0x00 · zero page 7/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.136] DEBUG TX feature id=0x00 · zero page 7/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.138] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 7/9
+[11:03:35.178] CMD   TX feature id=0x00 · zero page 8/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.178] DEBUG TX feature id=0x00 · zero page 8/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.180] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 8/9
+[11:03:35.220] CMD   TX feature id=0x00 · zero page final 9/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.220] DEBUG TX feature id=0x00 · zero page final 9/9 (64 bytes)
+0x0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.222] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page final 9/9
+[11:03:35.225] RX    GET feature id=0x00 · zero page final 9/9 · 64B
+[11:03:35.225] DEBUG GET feature · zero page final 9/9 (64 bytes)
+0x0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.225] CMD   TX feature id=0x00 · reset · commit keymap · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.225] DEBUG TX feature id=0x00 · reset · commit keymap (64 bytes)
+0x0000  04 02 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.228] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · commit keymap
+[11:03:35.231] RX    GET feature id=0x00 · reset · commit keymap · 64B
+[11:03:35.231] DEBUG GET feature · reset · commit keymap (64 bytes)
+0x0000  04 02 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.231] CMD   TX feature id=0x00 · reset · finalizar keymap · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.231] DEBUG TX feature id=0x00 · reset · finalizar keymap (64 bytes)
+0x0000  04 f0 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.234] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · finalizar keymap
+[11:03:35.237] RX    GET feature id=0x00 · reset · finalizar keymap · 64B
+[11:03:35.237] DEBUG GET feature · reset · finalizar keymap (64 bytes)
+0x0000  04 f0 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.237] INFO  · Resetando lighting
+[11:03:35.237] CMD   TX feature id=0x00 · reset · abrir sessão lighting · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.237] DEBUG TX feature id=0x00 · reset · abrir sessão lighting (64 bytes)
+0x0000  04 18 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.240] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · abrir sessão lighting
+[11:03:35.243] RX    GET feature id=0x00 · reset · abrir sessão lighting · 64B
+[11:03:35.243] DEBUG GET feature · reset · abrir sessão lighting (64 bytes)
+0x0000  04 18 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.243] CMD   TX feature id=0x00 · reset · lighting header · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.243] DEBUG TX feature id=0x00 · reset · lighting header (64 bytes)
+0x0000  04 27 00 00 00 00 00 00  09 00 00 00 00 00 00 00  |·'··············|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.246] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · lighting header
+[11:03:35.249] RX    GET feature id=0x00 · reset · lighting header · 64B
+[11:03:35.249] DEBUG GET feature · reset · lighting header (64 bytes)
+0x0000  04 27 00 01 00 00 00 00  09 00 00 00 00 00 00 00  |·'··············|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.249] CMD   TX feature id=0x00 · zero page 1/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.249] DEBUG TX feature id=0x00 · zero page 1/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.252] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 1/9
+[11:03:35.292] CMD   TX feature id=0x00 · zero page 2/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.292] DEBUG TX feature id=0x00 · zero page 2/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.294] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 2/9
+[11:03:35.334] CMD   TX feature id=0x00 · zero page 3/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.334] DEBUG TX feature id=0x00 · zero page 3/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.336] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 3/9
+[11:03:35.376] CMD   TX feature id=0x00 · zero page 4/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.376] DEBUG TX feature id=0x00 · zero page 4/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.378] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 4/9
+[11:03:35.418] CMD   TX feature id=0x00 · zero page 5/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.418] DEBUG TX feature id=0x00 · zero page 5/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.420] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 5/9
+[11:03:35.460] CMD   TX feature id=0x00 · zero page 6/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.460] DEBUG TX feature id=0x00 · zero page 6/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.462] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 6/9
+[11:03:35.502] CMD   TX feature id=0x00 · zero page 7/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.502] DEBUG TX feature id=0x00 · zero page 7/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.504] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 7/9
+[11:03:35.544] CMD   TX feature id=0x00 · zero page 8/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.544] DEBUG TX feature id=0x00 · zero page 8/9 · primeiros bytes: 00 00 00 00 00 00 00 00 00 00 00 00
+[11:03:35.546] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page 8/9
+[11:03:35.586] CMD   TX feature id=0x00 · zero page final 9/9 · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.586] DEBUG TX feature id=0x00 · zero page final 9/9 (64 bytes)
+0x0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.588] DEBUG ✔ feature id=0x00 aceito pelo SO · zero page final 9/9
+[11:03:35.591] RX    GET feature id=0x00 · zero page final 9/9 · 64B
+[11:03:35.591] DEBUG GET feature · zero page final 9/9 (64 bytes)
+0x0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.591] CMD   TX feature id=0x00 · reset · commit lighting · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.591] DEBUG TX feature id=0x00 · reset · commit lighting (64 bytes)
+0x0000  04 02 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.594] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · commit lighting
+[11:03:35.597] RX    GET feature id=0x00 · reset · commit lighting · 64B
+[11:03:35.597] DEBUG GET feature · reset · commit lighting (64 bytes)
+0x0000  04 02 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.597] CMD   TX feature id=0x00 · reset · finalizar lighting · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:35.597] DEBUG TX feature id=0x00 · reset · finalizar lighting (64 bytes)
+0x0000  04 f0 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:35.600] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · finalizar lighting
+[11:03:40.829] DEBUG GET feature indisponível (reset · finalizar lighting) — seguindo sem ACK (o conteúdo não é validado nem pelo nativo).
+[11:03:40.829] INFO  · Enviando footer de reset
+[11:03:40.829] CMD   TX feature id=0x00 · reset · abrir sessão footer · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:40.829] DEBUG TX feature id=0x00 · reset · abrir sessão footer (64 bytes)
+0x0000  04 18 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.831] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · abrir sessão footer
+[11:03:40.834] RX    GET feature id=0x00 · reset · abrir sessão footer · 64B
+[11:03:40.834] DEBUG GET feature · reset · abrir sessão footer (64 bytes)
+0x0000  04 18 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.834] CMD   TX feature id=0x00 · reset · footer header · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:40.834] DEBUG TX feature id=0x00 · reset · footer header (64 bytes)
+0x0000  04 13 00 00 00 00 00 00  01 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.837] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · footer header
+[11:03:40.840] RX    GET feature id=0x00 · reset · footer header · 64B
+[11:03:40.840] DEBUG GET feature · reset · footer header (64 bytes)
+0x0000  04 13 00 01 00 00 00 00  01 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.840] CMD   TX feature id=0x00 · reset · payload 0x0b · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:40.840] DEBUG TX feature id=0x00 · reset · payload 0x0b (64 bytes)
+0x0000  0b ff 00 00 00 00 00 00  01 05 03 00 00 00 aa 55  |···············U|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.843] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · payload 0x0b
+[11:03:40.846] RX    GET feature id=0x00 · reset · payload 0x0b · 64B
+[11:03:40.846] DEBUG GET feature · reset · payload 0x0b (64 bytes)
+0x0000  0b ff 00 00 00 00 00 00  01 05 03 00 00 00 aa 55  |···············U|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.846] CMD   TX feature id=0x00 · reset · commit footer · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:40.846] DEBUG TX feature id=0x00 · reset · commit footer (64 bytes)
+0x0000  04 02 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.849] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · commit footer
+[11:03:40.852] RX    GET feature id=0x00 · reset · commit footer · 64B
+[11:03:40.852] DEBUG GET feature · reset · commit footer (64 bytes)
+0x0000  04 02 00 01 12 02 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.852] CMD   TX feature id=0x00 · reset · finalizar footer · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:40.852] DEBUG TX feature id=0x00 · reset · finalizar footer (64 bytes)
+0x0000  04 f0 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:40.855] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · finalizar footer
+[11:03:45.949] DEBUG GET feature indisponível (reset · finalizar footer) — seguindo sem ACK (o conteúdo não é validado nem pelo nativo).
+[11:03:45.949] INFO  · Resetando config de display
+[11:03:45.949] CMD   TX feature id=0x00 · reset · abrir sessão displaycfg · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:45.949] DEBUG TX feature id=0x00 · reset · abrir sessão displaycfg (64 bytes)
+0x0000  04 18 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.951] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · abrir sessão displaycfg
+[11:03:45.954] RX    GET feature id=0x00 · reset · abrir sessão displaycfg · 64B
+[11:03:45.954] DEBUG GET feature · reset · abrir sessão displaycfg (64 bytes)
+0x0000  04 18 00 01 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.954] CMD   TX feature id=0x00 · reset · display config reset · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:45.954] DEBUG TX feature id=0x00 · reset · display config reset (64 bytes)
+0x0000  04 17 01 00 00 00 00 00  01 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.957] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · display config reset
+[11:03:45.960] RX    GET feature id=0x00 · reset · display config reset · 64B
+[11:03:45.960] DEBUG GET feature · reset · display config reset (64 bytes)
+0x0000  04 17 01 01 00 00 00 00  01 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.960] CMD   TX feature id=0x00 · reset · display config payload · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:45.960] DEBUG TX feature id=0x00 · reset · display config payload (64 bytes)
+0x0000  00 01 00 00 00 00 02 00  02 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.963] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · display config payload
+[11:03:45.966] RX    GET feature id=0x00 · reset · display config payload · 64B
+[11:03:45.966] DEBUG GET feature · reset · display config payload (64 bytes)
+0x0000  00 01 00 00 00 00 02 00  02 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.966] CMD   TX feature id=0x00 · reset · commit displaycfg · 64B payload / 65B na wire · id=0 + pacote 64B → wire real 64B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)
+[11:03:45.966] DEBUG TX feature id=0x00 · reset · commit displaycfg (64 bytes)
+0x0000  04 02 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.969] DEBUG ✔ feature id=0x00 aceito pelo SO · reset · commit displaycfg
+[11:03:45.972] RX    GET feature id=0x00 · reset · commit displaycfg · 64B
+[11:03:45.972] DEBUG GET feature · reset · commit displaycfg (64 bytes)
+0x0000  04 02 00 01 05 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+0x0030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |················|
+[11:03:45.972] OK    ✅ Factory reset completo — replugue o cabo pra religar a telinha limpa.

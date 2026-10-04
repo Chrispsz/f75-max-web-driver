@@ -1,5 +1,5 @@
 /**
- * F75 Driver — transporte WebHID do Aula F75 Max (v2 · descriptor-aware).
+ * F75 Driver — transporte WebHID do Aula F75 Max (v7 · display 1 transferência por bloco).
  *
  * A v1 falhava com NotAllowedError: "Failed to write the report" porque a
  * escrita chegava ao kernel e era rejeitada — a interface errada do receiver
@@ -785,32 +785,68 @@ export class F75Driver {
   /* --------------------------------- display -------------------------------- */
 
   /**
-   * Bloco de 4 KB do display. O nativo faz hid_write(4096) cru — o kernel
-   * aceita (≤ HID_MAX_BUFFER_SIZE) porque interrupt OUT não valida ID. O
-   * WebHID SEMPRE injeta o byte de ID, então:
-   *  - interface numerada  → sendReport(chunk[0], chunk[1..]) recria a wire
-   *    nativa 4096B byte a byte;
-   *  - interface sem IDs   → sendReport(0, pedaço) com pedaços ≤ min(maxOut,
-   *    4095); a wire ganha um 0x00 por write (o firmware aceita framing
-   *    prefixed — o nativo usa esse caminho como fallback).
+   * Bloco de 4 KB do display — CAUSA RAIZ DA TELINHA CORROMPIDA (v7):
+   *
+   * O firmware consome UM bloco de 4096 B POR TRANSFERÊNCIA USB (ele manda um
+   * ACK de input a cada bloco e os metadados declaram "N blocos de 4 KB"). O
+   * nativo faz hid_write(chunk4096) = UMA interrupção OUT de 4096 B por bloco.
+   * A v6 fatiava cada bloco em 2 transferências (4095 B + 1 B) — o firmware
+   * commitava cada transferência como se fosse o bloco → cada bloco pousava
+   * deslocado → imagem cortada, fora do lugar, "chiado de TV antiga".
+   *
+   * Wire exata do nativo, reproduzida no WebHID:
+   *  - sendReport(0, chunk4096) → Chrome escreve [0x00]+4096 no hidraw → o
+   *    kernel (usbhid_output_report) remove o 0x00 inicial → a wire recebe
+   *    EXATAMENTE os 4096 bytes do bloco, numa única transferência.
+   *    (Chrome aceita: buffer = id+data ≤ maxOutput+1 · HidConnection::Write.)
+   *    Bônus: o nativo PERDE o 1º byte quando o bloco começa com 0x00 (o kernel
+   *    stripa e ele não repõe) — a gente nunca perde.
+   *  - interface numerada → sendReport(chunk[0], chunk[1..]) = [b0]+4095 B na
+   *    wire, idêntico ao nativo (só vale com chunk[0] ≠ 0, pois Chrome exige
+   *    id ≠ 0 em interface numerada).
+   *  - último recurso: stream fatiado (o firmware PODE tratar cada
+   *    transferência como um bloco — se corromper, é aqui).
    */
+  private displayMonoRejected = false;
+
   private async writeDisplayChunk(ep: Endpoint | undefined, chunk: Uint8Array, index: number, total: number): Promise<void> {
     if (!ep) throw new F75Error(this.requireMessage("wiredDisplay"));
     const s = ep.summary;
     if (s.maxOutput <= 0 && s.maxFeature <= 0) {
       throw new F75Error("Interface de display não declara output/feature reports — impossível enviar blocos.");
     }
-    if (s.hasNumberedIds && s.maxOutput >= chunk.length - 1) {
-      // wire nativa idêntica: [chunk[0]] + chunk[1..4095] = 4096B
+
+    // Estratégia 1 — UMA transferência de 4096 B por bloco (wire nativa exata).
+    if (!s.hasNumberedIds && s.maxOutput >= chunk.length && !this.displayMonoRejected) {
+      try {
+        await ep.device.sendReport(0, chunk);
+        if (index === 1) {
+          f75log.ok(
+            `Estratégia de display: 1 transferência de ${chunk.length} B por bloco (wire nativa exata — Chrome prefixa 0x00 e o kernel remove).`
+          );
+        }
+        return;
+      } catch (err) {
+        this.displayMonoRejected = true;
+        f75log.warn(
+          `Escrita monolítica de ${chunk.length} B rejeitada (${err instanceof Error ? err.message : String(err)}) — usando stream fatiado neste upload.`
+        );
+      }
+    }
+
+    // Estratégia 2 — interface numerada: [chunk[0]] + chunk[1..] = 4096 B na wire.
+    if (s.hasNumberedIds && s.maxOutput >= chunk.length - 1 && chunk[0] !== 0) {
       await ep.device.sendReport(chunk[0], chunk.subarray(1));
       if (index === 1) f75log.ok("Estratégia de display: monolítica numerada (wire idêntica ao nativo: [chunk[0]]+4095B).");
       return;
     }
+
+    // Último recurso — fatiado (várias transferências por bloco).
     const piece = Math.min(s.maxOutput > 0 ? s.maxOutput : s.maxFeature, 4095);
     if (piece < 2) throw new F75Error(`Interface de display declara reports muito pequenos (${piece}B).`);
     if (index === 1) {
-      f75log.info(
-        `Estratégia de display: stream em pedaços de ${piece}B com id=0 (interface sem report IDs; wire = [0x00]+pedaço — kernel limita a 4096B).`
+      f75log.warn(
+        `Estratégia de display: stream em pedaços de ${piece} B com id=0 (interface sem output de 4 KB — ${Math.ceil(chunk.length / piece)} transferências por bloco).`
       );
     }
     const useFeature = s.maxOutput <= 0;
@@ -837,6 +873,7 @@ export class F75Driver {
     const raw = this.wiredDisplay;
     const started = performance.now();
     this.displayAckCounter = 0;
+    this.displayMonoRejected = false;
 
     f75log.info(`📤 Upload slot ${slot}: ${stream.frameCount} frames · ${stream.chunkCount} blocos · ${(stream.data.length / 1024).toFixed(0)} KB · ${stream.avgFps.toFixed(1)} fps médios`);
     await this.commandExchange(wiredPacket(0x04, 0x18), "upload · abrir sessão");

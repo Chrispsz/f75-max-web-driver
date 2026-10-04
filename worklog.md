@@ -323,3 +323,24 @@ Stage Summary:
 - RGB e Modo jogo/latência/suspensão FUNCIONAM SÓ COM CABO (novo: o web driver passou o nativo Linux nesse aspecto) — resolve exatamente a dor do usuário no modo cabeado
 - Pack de 3 artes na identidade do setup (keycaps branco/cinza + LED #41E8FF), 1 clique pra preparar e enviar pro slot
 - Inventário final de capacidades confirmado contra o código nativo completo: tudo do app macOS coberto + extras (ativar slot, apagar memória de display, console hex, teclas ao vivo, artes procedurais)
+
+---
+Task ID: 17
+Agent: Z.ai Code (main)
+Task: "o driver ta zoado" — imagens upadas no display ficam cortadas/fora do lugar e auto sync do relógio faz a tela piscar (chiado de TV antiga, pixels deslocados). Investigar a wire real (kernel + Chromium + nativo) e corrigir a causa raiz.
+
+Work Log:
+- Re-baixou os fontes nativos (paths corretos: Sources/AulaCore + Sources/AulaF75MaxDriver + Sources/AulaLinuxHID) e conferiu DisplayEncoder.swift byte a byte contra o nosso buildDisplayStream → ENCODER IDÊNTICO (header 256B, [0]=frameCount, [1..N]=delays ×500, RGB565 LE). O problema não era o conteúdo.
+- Leu LinuxHIDBackend.uploadDisplayStream: nativo = commandExchange(04 18) → metadados 04 72 [slot][8..9]=chunkCount → waitForRawAck(150ms) → POR BLOCO: hid_write(4096B) + waitForRawAck(350ms) → commit 04 02. O nosso uploadDisplay já seguia esse fluxo (ACK por bloco incluído) → problema não era o fluxo.
+- BAIXOU O KERNEL REAL (torvalds/linux) e fechou a wire: hidraw_send_report (count ≤ HID_MAX_BUFFER_SIZE=16384, ≥2) → __hid_hw_output_report → usbhid_output_report (hid-core.c:943): "if (buf[0]==0x0) {buf++;count--;}" — REMOVE o 0x00 inicial e manda o resto numa ÚNICA usb_interrupt_msg. Ou seja: write([0x00]+data) → wire = data exata, 1 transferência.
+- CAUSA RAIZ: o firmware consome UM bloco de 4096 B POR TRANSFERÊNCIA USB (metadados declaram "N blocos de 4 KB" e ele ACKa cada bloco). O nativo manda 1 hid_write(4096B) por bloco; a v6 fatiava cada bloco em 2 transferências (4095B + 1B, por causa do Math.min(maxOut, 4095)) → o firmware commitava CADA transferência como se fosse o bloco → cada bloco pousava deslocado → imagem cortada/fora do lugar/chiado de TV. Confere 100% com o sintoma.
+- Chromium confirmado (hid_connection.cc/hid_connection_impl.cc/blink hid_device.cc): Write() monta [report_id]+buffer, valida buffer ≤ maxOutput+1 e has_report_id == (id≠0) → sendReport(0, chunk4096) é aceito quando maxOutput ≥ 4096.
+- driver.ts v7 — writeDisplayChunk reescrito: ESTRATÉGIA 1 (primária): sendReport(0, chunk4096) = UMA transferência de 4096 B com a wire nativa EXATA (Chrome prefixa 0x00, kernel remove); com try/catch que memoriza rejeição (displayMonoRejected, reset por upload) e cai pro fatiado. ESTRATÉGIA 2: interface numerada com chunk[0]≠0 → sendReport(chunk[0], chunk[1..]) = wire nativa. ÚLTIMO RECURSO: fatiado com aviso alto no log. BÔNUS descoberto: o nativo PERDE o 1º byte de todo bloco que começa com 0x00 (kernel stripa e ele não repõe) — a v7 nunca perde (wire byte-perfeita).
+- Versão v6 → v7 (startup log + rodapé da sidebar); uploadDisplay reseta displayMonoRejected a cada upload.
+- Validação: tsc limpo em src/ (erros restantes só em examples/skills pré-existentes), eslint exit 0, HTTP 200; Agent Browser — app renderiza v7, painel Tela íntegro (bloqueio de cabo correto, artes prontas, slots, relógio), footer sticky 577/577, zero erros de página.
+
+Stage Summary:
+- Causa raiz fechada com 3 fontes primárias (kernel hid-core.c + Chromium hid_connection.cc + Swift nativo): bloco de 4 KB = 1 transferência USB; a v6 mandava 2 transferências por bloco.
+- Fix v7: 1 sendReport(0, 4096B) por bloco — wire byte-idêntica ao nativo (e melhor: nunca perde o byte que o nativo perde em blocos que começam com 0x00).
+- Piscar do auto-sync do relógio explicado: syncClock é byte-idêntico ao nativo; o repaint a cada 60s exibia a memória de display JÁ CORROMPIDA pelos uploads antigos — após "Apagar memória de display" + re-upload na v7 deve parar.
+- Plano de teste do usuário: conectar cabo → Apagar memória de display (2 cliques) → reenviar imagem/GIF → conferir telinha; se ainda corromper, mandar o log (estratégia de display aparece no log).

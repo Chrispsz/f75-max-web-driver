@@ -1,0 +1,1322 @@
+     1→/**
+     2→ * F75 Driver — transporte WebHID do Aula F75 Max (v2 · descriptor-aware).
+     3→ *
+     4→ * A v1 falhava com NotAllowedError: "Failed to write the report" porque a
+     5→ * escrita chegava ao kernel e era rejeitada — a interface errada do receiver
+     6→ * era vinculada (a primeira que aparecia, que pode ser a de teclado) e os
+     7→ * report IDs não respeitavam o descritor real. Esta versão reproduz a
+     8→ * semântica EXATA do trio hidapi/hidraw + Chromium no Linux:
+     9→ *
+    10→ *  - Chromium SEMPRE prefixa o byte de report ID na wire:
+    11→ *      sendReport(id, payload)        → hidraw write([id] + payload)
+    12→ *      sendFeatureReport(id, payload) → HIDIOCSFEATURE([id] + payload)
+    13→ *  - O Chrome exige has_report_id(interface) === (id !== 0): interface COM
+    14→ *    report IDs numerados PRECISA de id ≠ 0; SEM IDs, PRECISA de id 0.
+    15→ *  - Kernel (hidraw_send_report): count < 2 → EINVAL; count > 4096
+    16→ *    (HID_MAX_BUFFER_SIZE) → EINVAL; no caminho interrupt OUT o conteúdo vai
+    17→ *    cru (sem validação de ID); no fallback SET_REPORT o ID é validado no
+    18→ *    descritor e o byte de ID é stripado.
+    19→ *  - Driver nativo (LinuxHIDBackend.swift):
+    20→ *      · receiver 2.4G → hid_write na interface 0xFF60 (raw 32B primeiro,
+    21→ *        fallback [0x00]+pacote), candidatos ordenados: 0xFF60 → maior output;
+    22→ *      · cabo → feature reports 64B no 0xFF13 (raw primeiro, fallback [0x00]+);
+    23→ *      · display → writes de 4096B no 0xFF68.
+    24→ *
+    25→ * A matriz de estratégias abaixo tenta as equivalentes na ordem que o
+    26→ * DESCRITOR real sugere, loga cada tentativa (F12 / painel) e cacheia a
+    27→ * vencedora. DETALHE CRÍTICO (v4): o firmware do receiver IGNORA rotas
+    28→ * erradas em silêncio — "aceito pelo SO" NÃO prova que o teclado processou
+    29→ * o pacote. Por isso a rota do receiver é validada por SONDA: um sweep de
+    30→ * rotas candidatas com a query de bateria, onde a RESPOSTA REAL do teclado
+    31→ * (input report 0x20 0x01 .. %) confirma a rota certa. A rota validada
+    32→ * fica cacheada e passa a ser usada por RGB, desempenho e bateria.
+    33→ *
+    34→ * Contabilidade real da wire no Linux (hidraw):
+    35→ *   sendReport(0, N)  → Chrome escreve [0x00]+N · kernel usbhid REMOVE o
+    36→ *   0x00 (usbhid_output_report/usbhid_set_raw_report) → N bytes na wire.
+    37→ *   Ou seja: sendReport(0, pacote32) = 32B na wire = hid_write nativo.
+    38→ *   NUNCA prefixe 0x00 manualmente — vira 33B na wire e o firmware descarta.
+    39→ */
+    40→
+    41→import {
+    42→  AULA,
+    43→  batteryQueryPacket,
+    44→  describeWireless,
+    45→  gameModeReport,
+    46→  hex2,
+    47→  intToHex,
+    48→  parseBatteryReport,
+    49→  rgbCommitReport,
+    50→  rgbLEDReport,
+    51→  timePayload,
+    52→  wiredPacket,
+    53→  type EncodedDisplayStream,
+    54→  type GameFlags,
+    55→  type RgbSettings,
+    56→} from "./protocol";
+    57→import { f75log } from "./logger";
+    58→
+    59→export class F75Error extends Error {
+    60→  constructor(message: string) {
+    61→    super(message);
+    62→    this.name = "F75Error";
+    63→  }
+    64→}
+    65→
+    66→export type EndpointRole = "wiredCommand" | "wiredDisplay" | "dongle";
+    67→export type WireMode = "output" | "feature";
+    68→
+    69→export interface DriverStatus {
+    70→  wiredCommand: boolean;
+    71→  wiredDisplay: boolean;
+    72→  dongle: boolean;
+    73→}
+    74→
+    75→/* ----------------------------- diagnóstico ------------------------------- */
+    76→
+    77→export interface EndpointDiag {
+    78→  key: string;
+    79→  role: string;
+    80→  product: string;
+    81→  vid: string;
+    82→  pid: string;
+    83→  usagePages: string;
+    84→  hasNumberedIds: boolean;
+    85→  maxOutput: number;
+    86→  maxFeature: number;
+    87→  outputIds: string;
+    88→  featureIds: string;
+    89→  opened: boolean;
+    90→}
+    91→
+    92→export interface TxAttemptDiag {
+    93→  target: string;
+    94→  mode: string;
+    95→  reportId: string;
+    96→  wire: string;
+    97→  result: string;
+    98→}
+    99→
+   100→export interface DriverDiagnostics {
+   101→  endpoints: EndpointDiag[];
+   102→  lastTx: { label: string; attempts: TxAttemptDiag[] } | null;
+   103→  dongleRoute: string | null;
+   104→}
+   105→
+   106→/* ------------------------------ resumo HID ------------------------------- */
+   107→
+   108→interface ReportSize {
+   109→  id: number;
+   110→  bytes: number;
+   111→}
+   112→
+   113→interface DeviceSummary {
+   114→  usagePages: number[];
+   115→  hasNumberedIds: boolean;
+   116→  maxOutput: number;
+   117→  maxFeature: number;
+   118→  outputIds: ReportSize[];
+   119→  featureIds: ReportSize[];
+   120→}
+   121→
+   122→function reportBytes(infos: HIDReportInfo[]): ReportSize[] {
+   123→  return infos.map((info) => ({
+   124→    id: info.reportId,
+   125→    bytes: Math.ceil(info.items.reduce((acc, item) => acc + (item.reportCount ?? 1) * (item.reportSize ?? 0), 0) / 8),
+   126→  }));
+   127→}
+   128→
+   129→function walkCollections(
+   130→  c: HIDCollectionInfo,
+   131→  acc: { all: HIDReportInfo[]; out: HIDReportInfo[]; feat: HIDReportInfo[]; pages: Set<number> }
+   132→): void {
+   133→  acc.pages.add(c.usagePage);
+   134→  acc.all.push(...c.inputReports, ...c.outputReports, ...c.featureReports);
+   135→  acc.out.push(...c.outputReports);
+   136→  acc.feat.push(...c.featureReports);
+   137→  for (const child of c.children ?? []) walkCollections(child, acc);
+   138→}
+   139→
+   140→function summarizeDevice(device: HIDDevice): DeviceSummary {
+   141→  const acc = { all: [] as HIDReportInfo[], out: [] as HIDReportInfo[], feat: [] as HIDReportInfo[], pages: new Set<number>() };
+   142→  for (const c of device.collections) walkCollections(c, acc);
+   143→  const outputIds = reportBytes(acc.out);
+   144→  const featureIds = reportBytes(acc.feat);
+   145→  return {
+   146→    usagePages: [...acc.pages],
+   147→    hasNumberedIds: acc.all.some((r) => r.reportId !== 0),
+   148→    maxOutput: outputIds.reduce((m, r) => Math.max(m, r.bytes), 0),
+   149→    maxFeature: featureIds.reduce((m, r) => Math.max(m, r.bytes), 0),
+   150→    outputIds,
+   151→    featureIds,
+   152→  };
+   153→}
+   154→
+   155→function fmtSizes(list: ReportSize[]): string {
+   156→  return list.length ? list.map((r) => `0x${hex2(r.id)}:${r.bytes}B`).join(",") : "—";
+   157→}
+   158→
+   159→const padTo = (src: Uint8Array, size: number): Uint8Array => {
+   160→  if (src.length >= size) return src;
+   161→  const out = new Uint8Array(size);
+   162→  out.set(src);
+   163→  return out;
+   164→};
+   165→
+   166→/* -------------------------------- tipos TX -------------------------------- */
+   167→
+   168→interface TxSpec {
+   169→  mode: WireMode;
+   170→  reportId: number;
+   171→  payloadLen: number;
+   172→  padded: boolean;
+   173→  note: string;
+   174→}
+   175→
+   176→type TxAttemptLog = TxAttemptDiag;
+   177→
+   178→/** Rota de TX do receiver validada por RESPOSTA real do teclado (probe). */
+   179→interface DongleRoute {
+   180→  endpointKey: string;
+   181→  label: string; // ex.: "0xff60 · output 32B"
+   182→  mode: WireMode;
+   183→  pad: number; // 0 = payload cru; N = padTo(payload, N)
+   184→}
+   185→
+   186→interface Endpoint {
+   187→  kind: "real";
+   188→  key: string;
+   189→  device: HIDDevice;
+   190→  summary: DeviceSummary;
+   191→  role: EndpointRole;
+   192→}
+   193→
+   194→export interface UploadProgress {
+   195→  sent: number;
+   196→  total: number;
+   197→  chunksPerSecond: number;
+   198→  etaSeconds: number;
+   199→}
+   200→
+   201→export interface CancelToken {
+   202→  cancelled: boolean;
+   203→}
+   204→
+   205→export interface PerformanceOptions extends GameFlags {
+   206→  level: number; // 1..5
+   207→  sleep: number; // 0..3
+   208→}
+   209→
+   210→const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+   211→
+   212→export class F75Driver {
+   213→  private wiredCommand?: Endpoint;
+   214→  private wiredDisplay?: Endpoint;
+   215→  private dongleInterfaces: Endpoint[] = []; // TODAS as interfaces do receiver (0xFF60 primeiro)
+   216→  private dongle?: Endpoint;
+   217→  private bound = new WeakSet<HIDDevice>();
+   218→  private keySeq = 0;
+   219→  private statusListeners = new Set<(s: DriverStatus) => void>();
+   220→  private batteryWaiters: ((percent: number | null) => void)[] = [];
+   221→  private displayAckCounter = 0;
+   222→  private hidListenersAttached = false;
+   223→  private wireCache = new Map<string, { endpointKey: string; spec: TxSpec }>();
+   224→  private lastTx: { label: string; attempts: TxAttemptLog[] } | null = null;
+   225→  private dongleRoute: DongleRoute | null = null;
+   226→  private probing = false;
+   227→
+   228→  onStatus: ((s: DriverStatus) => void) | null = null;
+   229→  onBattery: ((percent: number | null) => void) | null = null;
+   230→
+   231→  /* -------------------------------- status -------------------------------- */
+   232→
+   233→  get status(): DriverStatus {
+   234→    return {
+   235→      wiredCommand: !!this.wiredCommand,
+   236→      wiredDisplay: !!this.wiredDisplay,
+   237→      dongle: this.dongleInterfaces.length > 0,
+   238→    };
+   239→  }
+   240→
+   241→  private notify(): void {
+   242→    const s = this.status;
+   243→    this.statusListeners.forEach((fn) => fn(s));
+   244→    this.onStatus?.(s);
+   245→  }
+   246→
+   247→  subscribe(fn: (s: DriverStatus) => void): () => void {
+   248→    this.statusListeners.add(fn);
+   249→    return () => this.statusListeners.delete(fn);
+   250→  }
+   251→
+   252→  /* -------------------------------- hotplug ------------------------------- */
+   253→
+   254→  private attachHidListeners(): void {
+   255→    if (this.hidListenersAttached || !navigator.hid) return;
+   256→    this.hidListenersAttached = true;
+   257→    navigator.hid.addEventListener("connect", (ev) => {
+   258→      const d = ev.device as HIDDevice;
+   259→      f75log.info(`🔌 Sistema: dispositivo HID presente 0x${d.vendorId.toString(16).padStart(4, "0")}:0x${d.productId.toString(16).padStart(4, "0")} — tentando rebinar endpoints…`);
+   260→      void this.reconnectSaved(true);
+   261→    });
+   262→    navigator.hid.addEventListener("disconnect", (ev) => {
+   263→      const d = ev.device as HIDDevice;
+   264→      if (this.bound.has(d)) {
+   265→        f75log.warn(`⚠ O dispositivo ${d.productName || "HID"} foi desconectado do sistema. Reconecte e clique em Reconectar.`);
+   266→        this.clearRealEndpoints();
+   267→        this.notify();
+   268→      }
+   269→    });
+   270→  }
+   271→
+   272→  private clearRealEndpoints(): void {
+   273→    this.wiredCommand = undefined;
+   274→    this.wiredDisplay = undefined;
+   275→    this.dongleInterfaces = [];
+   276→    this.dongle = undefined;
+   277→    this.wireCache.clear();
+   278→    this.dongleRoute = null;
+   279→  }
+   280→
+   281→  /* ------------------------------- conexão -------------------------------- */
+   282→
+   283→  static get supported(): boolean {
+   284→    return typeof navigator !== "undefined" && !!navigator.hid && !!window.isSecureContext;
+   285→  }
+   286→
+   287→  /** Abre o seletor do navegador (precisa de gesto do usuário). */
+   288→  async connectPicker(): Promise<DriverStatus> {
+   289→    if (!navigator.hid) throw new F75Error("WebHID indisponível — use Chrome/Chromium/Edge/Brave (não existe no Firefox).");
+   290→    this.attachHidListeners();
+   291→
+   292→    f75log.info("Abrindo seletor de dispositivos WebHID (filtros: 0x0C45:0x800A cabo, 0x05AC:0x024F receiver)…");
+   293→    const devices = await navigator.hid.requestDevice({
+   294→      filters: [
+   295→        { vendorId: AULA.wiredVendorId, productId: AULA.wiredProductId },
+   296→        { vendorId: AULA.dongleVendorId, productId: AULA.dongleProductId },
+   297→      ],
+   298→    });
+   299→    f75log.info(`Seletor retornou ${devices.length} interface(s) — vinculando as do F75 Max.`);
+   300→    await this.bindDevices(devices);
+   301→    if (!this.wiredCommand && !this.wiredDisplay && this.dongleInterfaces.length === 0) {
+   302→      throw new F75Error(
+   303→        "Nenhum endpoint vinculado. Selecione TODAS as entradas 'Aula F75 Max' / 'Aula F75 Max 2.4G' no seletor e tente de novo."
+   304→      );
+   305→    }
+   306→    this.notify();
+   307→    return this.status;
+   308→  }
+   309→
+   310→  /** Rebinding silencioso dos dispositivos já autorizados (sem seletor). */
+   311→  async reconnectSaved(silent = false): Promise<DriverStatus> {
+   312→    if (!navigator.hid) throw new F75Error("WebHID indisponível neste navegador.");
+   313→    this.attachHidListeners();
+   314→    const granted = await navigator.hid.getDevices();
+   315→    const ours = granted.filter(
+   316→      (d) =>
+   317→        (d.vendorId === AULA.wiredVendorId && d.productId === AULA.wiredProductId) ||
+   318→        (d.vendorId === AULA.dongleVendorId && d.productId === AULA.dongleProductId)
+   319→    );
+   320→    if (!silent) f75log.info(`Reconectar: ${ours.length} interface(s) já autorizadas neste navegador.`);
+   321→    if (ours.length === 0 && !silent) {
+   322→      throw new F75Error("Nenhum dispositivo autorizado ainda — use 'Conectar' para abrir o seletor uma vez.");
+   323→    }
+   324→    await this.bindDevices(ours);
+   325→    this.notify();
+   326→    return this.status;
+   327→  }
+   328→
+   329→  private async openDevice(device: HIDDevice): Promise<boolean> {
+   330→    if (this.bound.has(device)) return false;
+   331→    try {
+   332→      if (!device.opened) await device.open();
+   333→    } catch (err) {
+   334→      f75log.err(`Falha ao abrir ${device.productName || "HID"}: ${String(err)} — confira a regra udev (sudo cp packaging/linux/60-aula-f75-max.rules /etc/udev/rules.d/ && sudo udevadm control --reload && replug).`);
+   335→      return false;
+   336→    }
+   337→    this.bound.add(device);
+   338→    return true;
+   339→  }
+   340→
+   341→  private makeEndpoint(device: HIDDevice, role: EndpointRole): Endpoint {
+   342→    const summary = summarizeDevice(device);
+   343→    const ep: Endpoint = { kind: "real", key: `ep${this.keySeq++}`, device, summary, role };
+   344→    const pages = summary.usagePages.map((p) => `0x${p.toString(16)}`).join("/");
+   345→    f75log.debug(
+   346→      `Interface ${role} aberta: ${device.productName || "HID"} · pages ${pages} · reportIds ${summary.hasNumberedIds ? "NUMERADOS" : "ausentes"} · out ${fmtSizes(summary.outputIds)} · feat ${fmtSizes(summary.featureIds)}`
+   347→    );
+   348→    return ep;
+   349→  }
+   350→
+   351→  private async bindDevices(devices: HIDDevice[]): Promise<void> {
+   352→    const dongleCandidates: HIDDevice[] = [];
+   353→
+   354→    for (const device of devices) {
+   355→      const isWired = device.vendorId === AULA.wiredVendorId && device.productId === AULA.wiredProductId;
+   356→      const isDongle = device.vendorId === AULA.dongleVendorId && device.productId === AULA.dongleProductId;
+   357→      if ((!isWired && !isDongle) || this.bound.has(device)) continue;
+   358→
+   359→      if (isDongle) {
+   360→        dongleCandidates.push(device);
+   361→        continue;
+   362→      }
+   363→
+   364→      const role: EndpointRole | null = device.collections.some((c) => c.usagePage === AULA.wiredCommandPage)
+   365→        ? "wiredCommand"
+   366→        : device.collections.some((c) => c.usagePage === AULA.wiredRawPage)
+   367→          ? "wiredDisplay"
+   368→          : null;
+   369→      if (!role) {
+   370→        f75log.debug(`Interface do cabo ignorada (sem usage page 0xFF13/0xFF68): ${device.productName || "HID"}`);
+   371→        continue;
+   372→      }
+   373→      if (this[role]) continue; // já vinculada
+   374→      if (!(await this.openDevice(device))) continue;
+   375→      const ep = this.makeEndpoint(device, role);
+   376→      this[role] = ep;
+   377→      ep.device.addEventListener("inputreport", (ev) =>
+   378→        this.handleInput(role, ev.reportId, new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength))
+   379→      );
+   380→      f75log.ok(`✔ ${role === "wiredCommand" ? "Cabo · comando 0xFF13" : "Cabo · display 0xFF68"} vinculado — ${device.productName || "HID"}`);
+   381→    }
+   382→
+   383→    /* Receiver 2.4G: o nativo (openDongleRaw) varre TODAS as interfaces do
+   384→     * 05AC:024F e ordena: usagePage 0xFF60 primeiro, depois maior output.
+   385→     * A v1 pegava a primeira interface que aparecia — que pode ser a de
+   386→     * teclado do receiver, sem output de 32B → NotAllowedError. */
+   387→    for (const device of dongleCandidates) {
+   388→      if (!(await this.openDevice(device))) continue;
+   389→      const ep = this.makeEndpoint(device, "dongle");
+   390→      this.dongleInterfaces.push(ep);
+   391→      // Interfaces vendor (0xFF59/0xFF60) podem trazer ACKs/respostas como
+   392→      // input report SEM report ID (id=0x00) — não filtrar como ruído.
+   393→      const vendor = ep.summary.usagePages.includes(AULA.dongleCommandPage) || ep.summary.usagePages.includes(AULA.dongleRawPage);
+   394→      ep.device.addEventListener("inputreport", (ev) =>
+   395→        this.handleInput("dongle", ev.reportId, new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength), vendor)
+   396→      );
+   397→    }
+   398→    if (this.dongleInterfaces.length > 0) {
+   399→      this.dongleInterfaces.sort((a, b) => {
+   400→        const aRaw = a.summary.usagePages.includes(AULA.dongleRawPage) ? 0 : 1;
+   401→        const bRaw = b.summary.usagePages.includes(AULA.dongleRawPage) ? 0 : 1;
+   402→        if (aRaw !== bRaw) return aRaw - bRaw;
+   403→        return b.summary.maxOutput - a.summary.maxOutput;
+   404→      });
+   405→      this.dongle = this.dongleInterfaces[0];
+   406→      f75log.ok(
+   407→        `✔ Receiver 2.4G vinculado em ${this.dongleInterfaces.length} interface(s) — canal preferido: ${this.dongle.summary.usagePages.map((p) => `0x${p.toString(16)}`).join("/")} (output ${this.dongle.summary.maxOutput}B).`
+   408→      );
+   409→      if (!this.dongle.summary.usagePages.includes(AULA.dongleRawPage)) {
+   410→        f75log.warn("Nenhuma interface do receiver expôs a usage page 0xFF60 — usando a de maior output. Se RGB falhar, reconecte com o cabo e refaça o pareamento (Fn+R).");
+   411→      }
+   412→      void this.calibrateDongle();
+   413→    }
+   414→  }
+   415→
+   416→  async disconnect(): Promise<void> {
+   417→    const all = [this.wiredCommand, this.wiredDisplay, ...this.dongleInterfaces];
+   418→    for (const ep of all) {
+   419→      if (ep?.kind === "real") {
+   420→        try {
+   421→          await ep.device.close();
+   422→        } catch {
+   423→          /* ignore */
+   424→        }
+   425→        this.bound.delete(ep.device);
+   426→      }
+   427→    }
+   428→    this.clearRealEndpoints();
+   429→    f75log.info("Desconectado (endpoints fechados). Autorização continua salva — use Reconectar.");
+   430→    this.notify();
+   431→  }
+   432→
+   433→  /* ------------------------------ input reports ---------------------------- */
+   434→
+   435→  private handleInput(role: EndpointRole, reportId: number, data: Uint8Array, vendor = false): void {
+   436→    if (role === "dongle") {
+   437→      const percent = parseBatteryReport(reportId, data);
+   438→      if (percent !== null) {
+   439→        f75log.rx(`🔋 Bateria via input report: ${percent}% (id=0x${hex2(reportId)})`);
+   440→        const waiters = [...this.batteryWaiters];
+   441→        this.batteryWaiters = [];
+   442→        waiters.forEach((resolve) => resolve(percent));
+   443→        this.onBattery?.(percent);
+   444→        return;
+   445→      }
+   446→      // Interfaces vendor do receiver: qualquer input que não é bateria é
+   447→      // evidência (ACK/status do firmware) — loga sempre, até com id 0x00.
+   448→      if (vendor) {
+   449→        f75log.rx(
+   450→          `RX receiver (id=0x${hex2(reportId)}, ${data.length}B): ${Array.from(data.subarray(0, Math.min(data.length, 16)), (b) => hex2(b)).join(" ")}${data.length > 16 ? " …" : ""}`
+   451→        );
+   452→        return;
+   453→      }
+   454→      // teclado/mouse padrão do receiver — ruído de digitação, não loga
+   455→      if (reportId === 0x00 || reportId === 0x01 || reportId === 0x02) return;
+   456→      f75log.debug(`Input do receiver (id=0x${hex2(reportId)}): ${Array.from(data.subarray(0, 16), (b) => hex2(b)).join(" ")}`);
+   457→      return;
+   458→    }
+   459→    if (role === "wiredDisplay") {
+   460→      this.displayAckCounter += 1;
+   461→      if (this.displayAckCounter === 1 || this.displayAckCounter % 64 === 0) {
+   462→        f75log.rx(`ACK display #${this.displayAckCounter} (id=0x${hex2(reportId)}, ${data.length}B)`);
+   463→      }
+   464→      return;
+   465→    }
+   466→    if (role === "wiredCommand") {
+   467→      f75log.rx(`Input no canal de comando (id=0x${hex2(reportId)}): ${Array.from(data.subarray(0, 16), (b) => hex2(b)).join(" ")}`);
+   468→    }
+   469→  }
+   470→
+   471→  private waitForInput(ep: Endpoint | undefined, timeoutMs: number): Promise<Uint8Array | null> {
+   472→    if (!ep) return Promise.resolve(null);
+   473→    if (ep.kind !== "real") return Promise.resolve(null);
+   474→    return new Promise((resolve) => {
+   475→      let done = false;
+   476→      const finish = (value: Uint8Array | null) => {
+   477→        if (done) return;
+   478→        done = true;
+   479→        clearTimeout(timer);
+   480→        ep.device.removeEventListener("inputreport", handler);
+   481→        resolve(value);
+   482→      };
+   483→      const handler = (ev: HIDInputReportEvent) =>
+   484→        finish(new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength));
+   485→      const timer = setTimeout(() => finish(null), timeoutMs);
+   486→      ep.device.addEventListener("inputreport", handler);
+   487→    });
+   488→  }
+   489→
+   490→  /* ------------------------------- baixo nível ----------------------------- */
+   491→
+   492→  /**
+   493→   * Constrói a matriz de tentativas para um pacote, na ordem sugerida pelo
+   494→   * descritor REAL da interface (equivalentes exatas das duas rotas do
+   495→   * nativo: raw direto e [0x00]-prefixado).
+   496→   */
+   497→  private buildAttempts(s: DeviceSummary, packet: Uint8Array, modes: WireMode[]): TxSpec[] {
+   498→    const attempts: TxSpec[] = [];
+   499→    const numbered = s.hasNumberedIds;
+   500→
+   501→    for (const mode of modes) {
+   502→      const max = mode === "output" ? s.maxOutput : s.maxFeature;
+   503→      const declared = mode === "output" ? s.outputIds : s.featureIds;
+   504→      if (max <= 0) {
+   505→        attempts.push({
+   506→          mode,
+   507→          reportId: -1,
+   508→          payloadLen: 0,
+   509→          padded: false,
+   510→          note: `PULADO — interface não declara ${mode === "output" ? "output" : "feature"} reports (o Chrome rejeita na hora)`,
+   511→        });
+   512→        continue;
+   513→      }
+   514→      const wire = (payloadLen: number) => payloadLen + 1;
+   515→      if (numbered) {
+   516→        const id = packet[0];
+   517→        if (id !== 0) {
+   518→          const payloadLen = packet.length - 1;
+   519→          if (payloadLen <= max) {
+   520→            attempts.push({
+   521→              mode,
+   522→              reportId: id,
+   523→              payloadLen,
+   524→              padded: false,
+   525→              note: `id=0x${hex2(id)} + ${payloadLen}B payload → ${wire(payloadLen)}B na wire (device numerado — rota "raw" do nativo)`,
+   526→            });
+   527→          }
+   528→          const decl = declared.find((r) => r.id === id);
+   529→          if (decl && decl.bytes - 1 > payloadLen && decl.bytes - 1 <= max) {
+   530→            attempts.push({
+   531→              mode,
+   532→              reportId: id,
+   533→              payloadLen: decl.bytes - 1,
+   534→              padded: true,
+   535→              note: `id=0x${hex2(id)} + payload padded a ${decl.bytes - 1}B (report 0x${hex2(id)} declara ${decl.bytes}B)`,
+   536→            });
+   537→          }
+   538→        }
+   539→      } else {
+   540→        if (packet.length <= max) {
+   541→          attempts.push({
+   542→            mode,
+   543→            reportId: 0,
+   544→            payloadLen: packet.length,
+   545→            padded: false,
+   546→            note: `id=0 + pacote ${packet.length}B → wire real ${packet.length}B (Chrome injeta id 0x00 e o kernel hidraw remove — interrupt OUT cru, igual ao hid_write nativo)`,
+   547→          });
+   548→        }
+   549→        if (max > packet.length && max <= 4095) {
+   550→          attempts.push({
+   551→            mode,
+   552→            reportId: 0,
+   553→            payloadLen: max,
+   554→            padded: true,
+   555→            note: `id=0 + pacote padded a ${max}B (maior ${mode} declarado)`,
+   556→          });
+   557→        }
+   558→      }
+   559→    }
+   560→
+   561→    if (attempts.every((a) => a.reportId === -1)) {
+   562→      // Último recurso cruzado — gera evidência no log mesmo sabendo que o
+   563→      // Chrome deve rejeitar (divergência has_report_id).
+   564→      const mode: WireMode = s.maxOutput > 0 ? "output" : "feature";
+   565→      const max = mode === "output" ? s.maxOutput : s.maxFeature;
+   566→      if (max > 0) {
+   567→        if (numbered && packet[0] !== 0) {
+   568→          attempts.push({ mode, reportId: packet[0], payloadLen: packet.length - 1, padded: false, note: "cruzado: id=primeiro byte" });
+   569→        } else {
+   570→          attempts.push({ mode, reportId: 0, payloadLen: packet.length, padded: false, note: "cruzado: id=0 (esperado falhar — evidência)" });
+   571→        }
+   572→      }
+   573→    }
+   574→    return attempts;
+   575→  }
+   576→
+   577→  private candidatesFor(role: EndpointRole): Endpoint[] {
+   578→    if (role === "dongle") return this.dongleInterfaces;
+   579→    const ep = role === "wiredCommand" ? this.wiredCommand : this.wiredDisplay;
+   580→    return ep ? [ep] : [];
+   581→  }
+   582→
+   583→  private requireMessage(role: EndpointRole): string {
+   584→    return role === "dongle"
+   585→      ? "Conecte o receiver 2.4G (dongle 05AC:024F) — RGB, bateria e desempenho só funcionam por ele. Plugue o dongle e clique em Conectar, selecionando TODAS as entradas 'Aula F75 Max 2.4G'."
+   586→      : role === "wiredCommand"
+   587→        ? "Conecte o teclado via CABO USB-C (canal de comando 0xFF13) e selecione todas as entradas 'Aula F75 Max' no seletor."
+   588→        : "Conecte o teclado via CABO USB-C (canal de display 0xFF68) e selecione todas as entradas 'Aula F75 Max' no seletor.";
+   589→  }
+   590→
+   591→  private async emit(
+   592→    ep: Endpoint,
+   593→    spec: TxSpec,
+   594→    packet: Uint8Array,
+   595→    label: string,
+   596→    logs: TxAttemptLog[],
+   597→    dump: boolean
+   598→  ): Promise<boolean> {
+   599→    const target = `${ep.role}·${ep.summary.usagePages.map((p) => `0x${p.toString(16)}`).join("/")}`;
+   600→    if (spec.reportId === -1) {
+   601→      logs.push({ target, mode: spec.mode, reportId: "—", wire: "—", result: spec.note });
+   602→      f75log.debug(`TX ${spec.mode} · ${label} · ${spec.note}`);
+   603→      return false;
+   604→    }
+   605→    const payload = spec.reportId === 0
+   606→      ? spec.padded
+   607→        ? padTo(packet, spec.payloadLen)
+   608→        : packet
+   609→      : spec.padded
+   610→        ? padTo(packet.subarray(1), spec.payloadLen)
+   611→        : packet.subarray(1);
+   612→    const wire = payload.length + 1;
+   613→    const idTxt = `0x${hex2(spec.reportId)}`;
+   614→    logs.push({
+   615→      target,
+   616→      mode: spec.mode,
+   617→      reportId: idTxt,
+   618→      wire: `${payload.length}B+id`,
+   619→      result: "…",
+   620→    });
+   621→    f75log.cmd(`TX ${spec.mode} id=${idTxt} · ${label} · ${payload.length}B payload / ${wire}B na wire · ${spec.note}`);
+   622→    if (dump) f75log.dump(payload, `TX ${spec.mode} id=${idTxt} · ${label}`);
+   623→    else f75log.debug(`TX ${spec.mode} id=${idTxt} · ${label} · primeiros bytes: ${Array.from(payload.subarray(0, 12), (b) => hex2(b)).join(" ")}`);
+   624→    try {
+   625→      if (spec.mode === "output") {
+   626→        await ep.device.sendReport(spec.reportId, payload);
+   627→      } else {
+   628→        await ep.device.sendFeatureReport(spec.reportId, payload);
+   629→      }
+   630→      logs[logs.length - 1].result = "✔ ok";
+   631→      f75log.debug(`✔ ${spec.mode} id=${idTxt} aceito pelo SO · ${label}`);
+   632→      return true;
+   633→    } catch (err) {
+   634→      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+   635→      logs[logs.length - 1].result = `✗ ${msg}`;
+   636→      f75log.warn(`${spec.mode} id=${idTxt} falhou · ${label} · ${msg}`);
+   637→      return false;
+   638→    }
+   639→  }
+   640→
+   641→  /** Chave de cache da wire: mesmo endpoint + modo + id + tamanho de payload. */
+   642→  private specKey(epKey: string, spec: TxSpec): string {
+   643→    return `${epKey}|${spec.mode}|${spec.reportId}|${spec.padded ? "p" : "r"}|${spec.payloadLen}`;
+   644→  }
+   645→
+   646→  /** Spec vencedora de outro comando serve para este pacote? (mesma forma de wire) */
+   647→  private reusable(ep: Endpoint, packet: Uint8Array, spec: TxSpec): boolean {
+   648→    if (spec.reportId < 0) return false;
+   649→    if (spec.reportId === 0 && ep.summary.hasNumberedIds) return false;
+   650→    if (spec.reportId !== 0 && spec.reportId !== packet[0]) return false;
+   651→    const base = spec.reportId !== 0 ? packet.length - 1 : packet.length;
+   652→    return spec.padded ? spec.payloadLen >= base : spec.payloadLen === base;
+   653→  }
+   654→
+   655→  /** Candidatos capazes de carregar este pacote — evita gastar tentativas na
+   656→   *  interface de teclado/mouse do receiver, que não tem output de 32 B. */
+   657→  private capableCandidates(role: EndpointRole, packet: Uint8Array, modes: WireMode[]): Endpoint[] {
+   658→    const all = this.candidatesFor(role);
+   659→    const capable = all.filter((ep) => {
+   660→      const need = ep.summary.hasNumberedIds ? packet.length - 1 : packet.length;
+   661→      return (
+   662→        (modes.includes("output") && ep.summary.maxOutput >= need) ||
+   663→        (modes.includes("feature") && ep.summary.maxFeature >= need)
+   664→      );
+   665→    });
+   666→    return capable.length > 0 ? capable : all;
+   667→  }
+   668→
+   669→  /**
+   670→   * Envia um pacote pela matriz de estratégias. Primeiro tenta as specs
+   671→   * vencedoras de comandos anteriores com a mesma forma de wire (cache
+   672→   * global), depois varre candidatos × modos. Primeiro sucesso vence; tudo
+   673→   * falhou → F75Error com resumo completo das tentativas.
+   674→   */
+   675→  private async tx(
+   676→    packet: Uint8Array,
+   677→    label: string,
+   678→    role: EndpointRole,
+   679→    modes: WireMode[] = ["output", "feature"],
+   680→    dump = true
+   681→  ): Promise<void> {
+   682→    // Fast path do receiver: rota já validada por RESPOSTA do teclado (probe).
+   683→    // "Aceito pelo SO" não prova processamento — só a sonda prova. Se a rota
+   684→    // calibrada deixar de ser aceita pelo SO, limpa e cai na varredura abaixo.
+   685→    if (role === "dongle" && this.dongleRoute) {
+   686→      const r = this.dongleRoute;
+   687→      const ep = this.dongleInterfaces.find((e) => e.key === r.endpointKey);
+   688→      if (ep) {
+   689→        const logs: TxAttemptLog[] = [];
+   690→        const ok = await this.sendRoute(
+   691→          { ep, mode: r.mode, pad: r.pad, label: r.label, note: "rota calibrada por resposta" },
+   692→          packet,
+   693→          label,
+   694→          dump,
+   695→          logs
+   696→        );
+   697→        this.lastTx = { label, attempts: logs };
+   698→        if (ok) return;
+   699→        f75log.warn("Rota calibrada deixou de ser aceita pelo SO — re-sondando com a matriz completa…");
+   700→      }
+   701→      this.dongleRoute = null;
+   702→    }
+   703→
+   704→    const candidates = this.capableCandidates(role, packet, modes);
+   705→    if (candidates.length === 0) throw new F75Error(this.requireMessage(role));
+   706→
+   707→    const logs: TxAttemptLog[] = [];
+   708→
+   709→    for (const [key, entry] of this.wireCache) {
+   710→      const ep = candidates.find((c) => c.key === entry.endpointKey);
+   711→      if (!ep || !this.reusable(ep, packet, entry.spec)) continue;
+   712→      if (await this.emit(ep, entry.spec, packet, label, logs, dump)) {
+   713→        this.lastTx = { label, attempts: logs };
+   714→        return;
+   715→      }
+   716→      this.wireCache.delete(key);
+   717→      f75log.warn("Spec em cache deixou de funcionar — revarrendo matriz completa…");
+   718→    }
+   719→
+   720→    for (const ep of candidates) {
+   721→      for (const spec of this.buildAttempts(ep.summary, packet, modes)) {
+   722→        const ok = await this.emit(ep, spec, packet, label, logs, dump);
+   723→        if (ok) {
+   724→          this.wireCache.set(this.specKey(ep.key, spec), { endpointKey: ep.key, spec });
+   725→          this.lastTx = { label, attempts: logs };
+   726→          return;
+   727→        }
+   728→      }
+   729→    }
+   730→
+   731→    this.lastTx = { label, attempts: logs };
+   732→    const summary = logs
+   733→      .filter((l) => l.result !== "…" && !l.result.startsWith("✔"))
+   734→      .map((l) => `${l.target}/${l.mode}/id=${l.reportId}: ${l.result}`)
+   735→      .join(" · ");
+   736→    throw new F75Error(`TX falhou em ${logs.length} tentativa(s) — ${label}. ${this.requireMessage(role)} Detalhe: ${summary || "nenhuma estratégia aplicável ao descritor"}`);
+   737→  }
+   738→
+   739→  /** SET feature + GET feature de ACK — mesma tolerância do commandExchange nativo.
+   740→   *  Retorna o ACK lido (DataView) quando disponível — o byte [3] é o status
+   741→   *  do firmware (0x01 = ok, visível nos logs: `04 02 00 01`, `04 72 02 01`…). */
+   742→  private async commandExchange(packet: Uint8Array, label: string): Promise<DataView | null> {
+   743→    await this.tx(packet, label, "wiredCommand", ["feature", "output"]);
+   744→    return this.readFeatureAck(label);
+   745→  }
+   746→
+   747→  private async readFeatureAck(label: string): Promise<DataView | null> {
+   748→    const ep = this.wiredCommand;
+   749→    if (!ep) return null;
+   750→    const declared = ep.summary.featureIds.map((r) => r.id);
+   751→    const ids = [...new Set([0, ...declared, 0x04])];
+   752→    for (const id of ids) {
+   753→      try {
+   754→        const view = await ep.device.receiveFeatureReport(id);
+   755→        f75log.rx(`GET feature id=0x${hex2(id)} · ${label} · ${view.byteLength}B`);
+   756→        f75log.dump(view, `GET feature · ${label}`);
+   757→        return view;
+   758→      } catch {
+   759→        /* tenta próximo id */
+   760→      }
+   761→    }
+   762→    f75log.debug(`GET feature indisponível (${label}) — seguindo sem ACK (o conteúdo não é validado nem pelo nativo).`);
+   763→    return null;
+   764→  }
+   765→
+   766→  /** ACK de comando do cabo: byte [3] do GET feature = 0x01 quando o firmware aceita. */
+   767→  private static ackOk(ack: DataView | null): boolean {
+   768→    if (!ack || ack.byteLength < 4) return false;
+   769→    return new Uint8Array(ack.buffer, ack.byteOffset, ack.byteLength)[3] === 0x01;
+   770→  }
+   771→
+   772→  /* ------------------------------- papel/moeda ------------------------------ */
+   773→
+   774→  async syncClock(date: Date = new Date()): Promise<void> {
+   775→    f75log.info(`⏰ Sincronizando relógio da telinha: ${date.toLocaleString("pt-BR")}`);
+   776→    await this.commandExchange(wiredPacket(0x04, 0x18), "relógio · abrir sessão");
+   777→    const prepare = wiredPacket(0x04, 0x28);
+   778→    prepare[8] = 0x01;
+   779→    await this.commandExchange(prepare, "relógio · prepare");
+   780→    await this.commandExchange(timePayload(date), "relógio · payload de tempo");
+   781→    await this.commandExchange(wiredPacket(0x04, 0x02), "relógio · commit");
+   782→    f75log.ok(`Relógio da telinha sincronizado (${date.toLocaleTimeString("pt-BR")}).`);
+   783→  }
+   784→
+   785→  /* --------------------------------- display -------------------------------- */
+   786→
+   787→  /**
+   788→   * Bloco de 4 KB do display. O nativo faz hid_write(4096) cru — o kernel
+   789→   * aceita (≤ HID_MAX_BUFFER_SIZE) porque interrupt OUT não valida ID. O
+   790→   * WebHID SEMPRE injeta o byte de ID, então:
+   791→   *  - interface numerada  → sendReport(chunk[0], chunk[1..]) recria a wire
+   792→   *    nativa 4096B byte a byte;
+   793→   *  - interface sem IDs   → sendReport(0, pedaço) com pedaços ≤ min(maxOut,
+   794→   *    4095); a wire ganha um 0x00 por write (o firmware aceita framing
+   795→   *    prefixed — o nativo usa esse caminho como fallback).
+   796→   */
+   797→  private async writeDisplayChunk(ep: Endpoint | undefined, chunk: Uint8Array, index: number, total: number): Promise<void> {
+   798→    if (!ep) throw new F75Error(this.requireMessage("wiredDisplay"));
+   799→    const s = ep.summary;
+   800→    if (s.maxOutput <= 0 && s.maxFeature <= 0) {
+   801→      throw new F75Error("Interface de display não declara output/feature reports — impossível enviar blocos.");
+   802→    }
+   803→    if (s.hasNumberedIds && s.maxOutput >= chunk.length - 1) {
+   804→      // wire nativa idêntica: [chunk[0]] + chunk[1..4095] = 4096B
+   805→      await ep.device.sendReport(chunk[0], chunk.subarray(1));
+   806→      if (index === 1) f75log.ok("Estratégia de display: monolítica numerada (wire idêntica ao nativo: [chunk[0]]+4095B).");
+   807→      return;
+   808→    }
+   809→    const piece = Math.min(s.maxOutput > 0 ? s.maxOutput : s.maxFeature, 4095);
+   810→    if (piece < 2) throw new F75Error(`Interface de display declara reports muito pequenos (${piece}B).`);
+   811→    if (index === 1) {
+   812→      f75log.info(
+   813→        `Estratégia de display: stream em pedaços de ${piece}B com id=0 (interface sem report IDs; wire = [0x00]+pedaço — kernel limita a 4096B).`
+   814→      );
+   815→    }
+   816→    const useFeature = s.maxOutput <= 0;
+   817→    for (let off = 0; off < chunk.length; off += piece) {
+   818→      const slice = chunk.subarray(off, Math.min(off + piece, chunk.length));
+   819→      if (useFeature) await ep.device.sendFeatureReport(0, slice);
+   820→      else await ep.device.sendReport(0, slice);
+   821→    }
+   822→  }
+   823→
+   824→  async uploadDisplay(
+   825→    stream: EncodedDisplayStream,
+   826→    slot: number,
+   827→    onProgress: (p: UploadProgress) => void,
+   828→    token?: CancelToken
+   829→  ): Promise<void> {
+   830→    if (!Number.isInteger(slot) || slot < 1 || slot > 255) {
+   831→      throw new F75Error("Slot precisa ser um número entre 1 e 255.");
+   832→    }
+   833→    if (stream.chunkCount > 0xffff) throw new F75Error("Payload grande demais pros metadados de 16 bits.");
+   834→    if (!this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
+   835→    if (!this.wiredDisplay) throw new F75Error(this.requireMessage("wiredDisplay"));
+   836→
+   837→    const raw = this.wiredDisplay;
+   838→    const started = performance.now();
+   839→    this.displayAckCounter = 0;
+   840→
+   841→    f75log.info(`📤 Upload slot ${slot}: ${stream.frameCount} frames · ${stream.chunkCount} blocos · ${(stream.data.length / 1024).toFixed(0)} KB · ${stream.avgFps.toFixed(1)} fps médios`);
+   842→    await this.commandExchange(wiredPacket(0x04, 0x18), "upload · abrir sessão");
+   843→
+   844→    const metadata = wiredPacket(0x04, 0x72);
+   845→    metadata[2] = slot;
+   846→    metadata[8] = stream.chunkCount & 0xff;
+   847→    metadata[9] = (stream.chunkCount >> 8) & 0xff;
+   848→    await this.commandExchange(metadata, "upload · metadados");
+   849→    const firstAck = await this.waitForInput(raw, 150);
+   850→    if (!firstAck) f75log.warn("Sem ACK após metadados (150 ms) — o nativo segue mesmo assim.");
+   851→
+   852→    let lastLog = 0;
+   853→    for (let index = 0; index < stream.chunkCount; index++) {
+   854→      if (token?.cancelled) throw new F75Error("Upload cancelado pelo usuário.");
+   855→      const chunk = stream.data.subarray(index * AULA.chunkLength, (index + 1) * AULA.chunkLength);
+   856→      try {
+   857→        await this.writeDisplayChunk(raw, chunk, index + 1, stream.chunkCount);
+   858→      } catch (err) {
+   859→        throw new F75Error(`Bloco ${index + 1}/${stream.chunkCount} falhou: ${err instanceof Error ? err.message : String(err)}`);
+   860→      }
+   861→      const ack = await this.waitForInput(raw, 350);
+   862→      if (!ack && index % 32 === 0) f75log.debug(`Bloco ${index + 1}: sem ACK em 350 ms (seguindo).`);
+   863→
+   864→      if (index - lastLog >= 9 || index === stream.chunkCount - 1) {
+   865→        lastLog = index;
+   866→        const elapsed = (performance.now() - started) / 1000;
+   867→        const cps = (index + 1) / Math.max(elapsed, 0.001);
+   868→        f75log.debug(`Progresso: ${index + 1}/${stream.chunkCount} blocos · ${cps.toFixed(0)} blocos/s`);
+   869→        onProgress({
+   870→          sent: index + 1,
+   871→          total: stream.chunkCount,
+   872→          chunksPerSecond: cps,
+   873→          etaSeconds: (stream.chunkCount - index - 1) / Math.max(cps, 0.001),
+   874→        });
+   875→      }
+   876→    }
+   877→    onProgress({ sent: stream.chunkCount, total: stream.chunkCount, chunksPerSecond: stream.chunkCount / ((performance.now() - started) / 1000), etaSeconds: 0 });
+   878→
+   879→    await this.commandExchange(wiredPacket(0x04, 0x02), "upload · commit");
+   880→    const seconds = (performance.now() - started) / 1000;
+   881→    f75log.ok(`Upload concluído no slot ${slot}: ${stream.chunkCount} blocos em ${seconds.toFixed(1)} s (${(stream.chunkCount / Math.max(seconds, 0.001)).toFixed(0)} blocos/s).`);
+   882→  }
+   883→
+   884→  /* ------------------------- display: slots e memória ----------------------- */
+   885→
+   886→  /** Páginas zeradas de 64 B — mesmo ritmo do nativo (40 ms entre writes). */
+   887→  private async zeroPages(count: number): Promise<void> {
+   888→    const zero = new Uint8Array(AULA.commandLength);
+   889→    for (let i = 0; i < count - 1; i++) {
+   890→      await this.tx(zero, `zero page ${i + 1}/${count}`, "wiredCommand", ["feature", "output"], false);
+   891→      await sleep(40);
+   892→    }
+   893→    await this.commandExchange(zero, `zero page final ${count}/${count}`);
+   894→  }
+   895→
+   896→  /**
+   897→   * Troca o slot exibido pela telinha SEM reenviar conteúdo.
+   898→   *
+   899→   * O driver nativo não tem comando dedicado de "ativar slot" — ele só
+   900→   * escreve num slot via metadados 0x04 0x72 + commit 0x04 0x02, e a telinha
+   901→   * passa a mostrar o último slot escrito. Esta função reproduz esse caminho
+   902→   * no modo mínimo: abrir sessão → metadados apontando pro slot com 0 blocos
+   903→   * de payload → commit. O ACK do firmware (byte [3] do GET feature = 0x01)
+   904→   * confirma se o comando foi aceito.
+   905→   *
+   906→   * Se a telinha não mudar em ~2 s, o firmware da sua unidade só troca de
+   907→   * slot no upload — aí o caminho garantido é reenviar a imagem pro slot.
+   908→   */
+   909→  async activateDisplaySlot(slot: number): Promise<void> {
+   910→    if (!Number.isInteger(slot) || slot < 1 || slot > 255) {
+   911→      throw new F75Error("Slot precisa ser um número entre 1 e 255.");
+   912→    }
+   913→    if (!this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
+   914→
+   915→    f75log.info(`📺 Ativando slot ${slot} da telinha (sem reenviar conteúdo)…`);
+   916→    await this.commandExchange(wiredPacket(0x04, 0x18), `slot ${slot} · abrir sessão`);
+   917→    const metadata = wiredPacket(0x04, 0x72);
+   918→    metadata[2] = slot;
+   919→    // [8..9] = 0 blocos — a sessão aponta pro slot sem payload de dados
+   920→    const metaAck = await this.commandExchange(metadata, `slot ${slot} · metadados (0 blocos)`);
+   921→    const commitAck = await this.commandExchange(wiredPacket(0x04, 0x02), `slot ${slot} · commit`);
+   922→
+   923→    if (F75Driver.ackOk(commitAck) || F75Driver.ackOk(metaAck)) {
+   924→      f75log.ok(
+   925→        `✔ Firmware aceitou a ativação do slot ${slot} (ACK 0x01). A telinha deve trocar em até ~2 s — se continuar no outro conteúdo, seu firmware só troca de slot no upload: reenvie a imagem pro slot ${slot}.`
+   926→      );
+   927→    } else {
+   928→      f75log.warn(
+   929→        `Comando aceito pelo SO, mas sem ACK de sucesso do firmware — a telinha provavelmente NÃO mudou. Caminho garantido: reenvie a imagem pro slot ${slot} (o upload ativa o slot automaticamente no commit).`
+   930→      );
+   931→    }
+   932→  }
+   933→
+   934→  /**
+   935→   * Apaga TODA a memória de display (todos os slots) — exatamente o bloco de
+   936→   * limpeza do factoryReset nativo, isolado pra poder remover GIFs sem
+   937→   * resetar keymap/lighting. Requer cabo USB-C.
+   938→   */
+   939→  async eraseDisplayMemory(onStage: (stage: string) => void): Promise<void> {
+   940→    if (!this.wiredCommand || !this.wiredDisplay) {
+   941→      throw new F75Error(this.requireMessage("wiredCommand"));
+   942→    }
+   943→    onStage("Apagando memória de display (todos os slots)");
+   944→    await this.commandExchange(wiredPacket(0x04, 0x19), "display · clear memory");
+   945→    const clearSlots = wiredPacket(0x04, 0x15);
+   946→    clearSlots[8] = 0x08;
+   947→    await this.commandExchange(clearSlots, "display · clear slots");
+   948→    await this.zeroPages(8);
+   949→    await this.commandExchange(wiredPacket(0x04, 0x02), "display · commit");
+   950→    f75log.ok("✅ Memória de display apagada — replugue o cabo pra telinha reassumir.");
+   951→  }
+   952→
+   953→  /* ------------------------------ factory reset ----------------------------- */
+   954→
+   955→  async factoryReset(onStage: (stage: string) => void): Promise<void> {
+   956→    const exchange = async (packet: Uint8Array, label: string) => this.commandExchange(packet, label);
+   957→
+   958→    onStage("Apagando memória de display");
+   959→    await exchange(wiredPacket(0x04, 0x19), "reset · clear display memory");
+   960→    const clearSlots = wiredPacket(0x04, 0x15);
+   961→    clearSlots[8] = 0x08;
+   962→    await exchange(clearSlots, "reset · clear slots");
+   963→    await this.zeroPages(8);
+   964→    await exchange(wiredPacket(0x04, 0x02), "reset · commit display");
+   965→
+   966→    onStage("Resetando keymap e macros");
+   967→    await exchange(wiredPacket(0x04, 0x18), "reset · abrir sessão keymap");
+   968→    const keymap = wiredPacket(0x04, 0x11);
+   969→    keymap[8] = 0x09;
+   970→    await exchange(keymap, "reset · keymap header");
+   971→    await this.zeroPages(9);
+   972→    await exchange(wiredPacket(0x04, 0x02), "reset · commit keymap");
+   973→    await exchange(wiredPacket(0x04, 0xf0), "reset · finalizar keymap");
+   974→
+   975→    onStage("Resetando lighting");
+   976→    await exchange(wiredPacket(0x04, 0x18), "reset · abrir sessão lighting");
+   977→    const lighting = wiredPacket(0x04, 0x27);
+   978→    lighting[8] = 0x09;
+   979→    await exchange(lighting, "reset · lighting header");
+   980→    await this.zeroPages(9);
+   981→    await exchange(wiredPacket(0x04, 0x02), "reset · commit lighting");
+   982→    await exchange(wiredPacket(0x04, 0xf0), "reset · finalizar lighting");
+   983→
+   984→    onStage("Enviando footer de reset");
+   985→    await exchange(wiredPacket(0x04, 0x18), "reset · abrir sessão footer");
+   986→    const header = wiredPacket(0x04, 0x13);
+   987→    header[8] = 0x01;
+   988→    await exchange(header, "reset · footer header");
+   989→    const payload = wiredPacket(0x0b, 0xff);
+   990→    payload[8] = 0x01;
+   991→    payload[9] = 0x05;
+   992→    payload[10] = 0x03;
+   993→    payload[14] = 0xaa;
+   994→    payload[15] = 0x55;
+   995→    await exchange(payload, "reset · payload 0x0b");
+   996→    await exchange(wiredPacket(0x04, 0x02), "reset · commit footer");
+   997→    await exchange(wiredPacket(0x04, 0xf0), "reset · finalizar footer");
+   998→
+   999→    onStage("Resetando config de display");
+  1000→    await exchange(wiredPacket(0x04, 0x18), "reset · abrir sessão displaycfg");
+  1001→    const displayReset = wiredPacket(0x04, 0x17);
+  1002→    displayReset[2] = 0x01;
+  1003→    displayReset[8] = 0x01;
+  1004→    await exchange(displayReset, "reset · display config reset");
+  1005→    const displayConfig = new Uint8Array(AULA.commandLength);
+  1006→    displayConfig[0] = 0x00;
+  1007→    displayConfig[1] = 0x01;
+  1008→    displayConfig[6] = 0x02;
+  1009→    displayConfig[8] = 0x02;
+  1010→    await exchange(displayConfig, "reset · display config payload");
+  1011→    await exchange(wiredPacket(0x04, 0x02), "reset · commit displaycfg");
+  1012→
+  1013→    f75log.ok("✅ Factory reset completo — replugue o cabo pra religar a telinha limpa.");
+  1014→  }
+  1015→
+  1016→  /* ------------------ receiver: rotas, sonda e bateria --------------------- */
+  1017→
+  1018→  /**
+  1019→   * Rotas candidatas do receiver, em ordem de prioridade. A 1ª equivale ao
+  1020→   * hid_write cru do nativo na 0xFF60; as demais cobrem a interface de
+  1021→   * comando 0xFF59 (com padding ao tamanho nativo de 64 B) e o caminho de
+  1022→   * controle SET_REPORT (feature). O firmware ignora rotas erradas em
+  1023→   * silêncio — só a SONDA (resposta real de bateria) escolhe a certa.
+  1024→   */
+  1025→  private routeCandidates(): { ep: Endpoint; mode: WireMode; pad: number; label: string; note: string }[] {
+  1026→    const rank = (ep: Endpoint) =>
+  1027→      ep.summary.usagePages.includes(0xff60) ? 0 : ep.summary.usagePages.includes(0xff59) ? 1 : 2;
+  1028→    const ifaces = [...this.dongleInterfaces].sort((a, b) => rank(a) - rank(b));
+  1029→    const routes: { ep: Endpoint; mode: WireMode; pad: number; label: string; note: string }[] = [];
+  1030→    for (const ep of ifaces) {
+  1031→      if (ep.summary.hasNumberedIds) continue;
+  1032→      const page = ep.summary.usagePages.includes(0xff60)
+  1033→        ? "0xff60"
+  1034→        : ep.summary.usagePages.includes(0xff59)
+  1035→          ? "0xff59"
+  1036→          : `pg:${ep.summary.usagePages.map((p) => `0x${p.toString(16)}`).join("/")}`;
+  1037→      if (ep.summary.maxOutput >= 32) {
+  1038→        routes.push({ ep, mode: "output", pad: 0, label: `${page} · output ${ep.summary.maxOutput}B`, note: "output cru — equivalente exato ao hid_write do nativo" });
+  1039→      }
+  1040→      if (ep.summary.maxOutput >= 64) {
+  1041→        routes.push({ ep, mode: "output", pad: 64, label: `${page} · output padded 64B`, note: "output com padding ao tamanho nativo da interface de comando" });
+  1042→      }
+  1043→      if (ep.summary.maxFeature >= 32) {
+  1044→        routes.push({ ep, mode: "feature", pad: 0, label: `${page} · feature ${ep.summary.maxFeature}B`, note: "SET_REPORT via endpoint de controle" });
+  1045→      }
+  1046→    }
+  1047→    return routes;
+  1048→  }
+  1049→
+  1050→  /**
+  1051→   * Envia por uma rota concreta com contabilidade REAL da wire: no Linux,
+  1052→   * sendReport(0, N) vira write([0x00]+N) no hidraw e o kernel usbhid REMOVE
+  1053→   * o 0x00 → N bytes chegam ao device. Nunca prefixar 0x00 manualmente.
+  1054→   */
+  1055→  private async sendRoute(
+  1056→    r: { ep: Endpoint; mode: WireMode; pad: number; label: string; note: string },
+  1057→    packet: Uint8Array,
+  1058→    label: string,
+  1059→    dump: boolean,
+  1060→    logs: TxAttemptLog[]
+  1061→  ): Promise<boolean> {
+  1062→    const payload = r.pad > packet.length ? padTo(packet, r.pad) : packet;
+  1063→    const wireTxt =
+  1064→      r.mode === "output"
+  1065→        ? `${payload.length}B na wire (Chrome prefixa id 0x00 · kernel hidraw remove → interrupt OUT cru)`
+  1066→        : `${payload.length}B via SET_REPORT no endpoint de controle (id 0x00 stripado pelo kernel)`;
+  1067→    logs.push({ target: r.label, mode: r.mode, reportId: "0x00", wire: `${payload.length}B`, result: "…" });
+  1068→    f75log.cmd(`TX ${r.mode} · ${label} · ${r.label} · ${payload.length}B payload → ${wireTxt}`);
+  1069→    if (dump) f75log.dump(payload, `TX ${r.mode} · ${label} · ${r.label}`);
+  1070→    else f75log.debug(`TX ${r.mode} · ${label} · primeiros bytes: ${Array.from(payload.subarray(0, 12), (b) => hex2(b)).join(" ")}`);
+  1071→    try {
+  1072→      if (r.mode === "output") await r.ep.device.sendReport(0, payload);
+  1073→      else await r.ep.device.sendFeatureReport(0, payload);
+  1074→      logs[logs.length - 1].result = "✔ aceito pelo SO";
+  1075→      f75log.debug(`✔ ${r.mode} aceito pelo SO · ${label} · ${r.label} (processamento pelo teclado só a sonda prova)`);
+  1076→      return true;
+  1077→    } catch (err) {
+  1078→      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  1079→      logs[logs.length - 1].result = `✗ ${msg}`;
+  1080→      f75log.warn(`${r.mode} falhou · ${label} · ${r.label} · ${msg}`);
+  1081→      return false;
+  1082→    }
+  1083→  }
+  1084→
+  1085→  /** Espera resposta de bateria — registrar ANTES do send (sem corrida). */
+  1086→  private batteryWaiter(timeoutMs: number): Promise<number | null> {
+  1087→    return new Promise((resolve) => {
+  1088→      this.batteryWaiters.push(resolve);
+  1089→      setTimeout(() => {
+  1090→        const i = this.batteryWaiters.indexOf(resolve);
+  1091→        if (i >= 0) {
+  1092→          this.batteryWaiters.splice(i, 1);
+  1093→          resolve(null);
+  1094→        }
+  1095→      }, timeoutMs);
+  1096→    });
+  1097→  }
+  1098→
+  1099→  /**
+  1100→   * SONDA de rotas do receiver: envia a query de bateria por cada rota
+  1101→   * candidata e espera a RESPOSTA real do teclado. A rota que responder é
+  1102→   * a certa — fica cacheada e passa a valer para RGB/desempenho/bateria.
+  1103→   * Se nenhuma responder, o teclado provavelmente não está falando com o
+  1104→   * receiver (dormindo, fora do 2.4G ou sem pareamento Fn+R).
+  1105→   */
+  1106→  private async probeDongleRoutes(verbose: boolean): Promise<number | null> {
+  1107→    if (this.probing) return null;
+  1108→    this.probing = true;
+  1109→    try {
+  1110→      // Rota já validada — usa direto, sem re-sweep.
+  1111→      if (this.dongleRoute) {
+  1112→        const r = this.dongleRoute;
+  1113→        const ep = this.dongleInterfaces.find((e) => e.key === r.endpointKey);
+  1114→        if (ep) {
+  1115→          const logs: TxAttemptLog[] = [];
+  1116→          const wait = this.batteryWaiter(400);
+  1117→          await this.sendRoute(
+  1118→            { ep, mode: r.mode, pad: r.pad, label: r.label, note: "rota calibrada" },
+  1119→            batteryQueryPacket(false, 32),
+  1120→            "probe bateria",
+  1121→            false,
+  1122→            logs
+  1123→          );
+  1124→          const percent = await wait;
+  1125→          this.lastTx = { label: "probe bateria (rota calibrada)", attempts: logs };
+  1126→          if (percent !== null) return percent;
+  1127→          if (verbose) f75log.warn("Rota calibrada não recebeu resposta agora — teclado dormindo? Aperte uma tecla e tente de novo.");
+  1128→          return null;
+  1129→        }
+  1130→        this.dongleRoute = null;
+  1131→      }
+  1132→
+  1133→      const routes = this.routeCandidates();
+  1134→      if (routes.length === 0) {
+  1135→        if (verbose) f75log.warn("Receiver sem interface utilizável — nenhuma declara output/feature ≥ 32 B.");
+  1136→        return null;
+  1137→      }
+  1138→      if (verbose) f75log.info(`🔎 Sondando ${routes.length} rota(s) do receiver com a query de bateria — a resposta real do teclado valida a rota…`);
+  1139→
+  1140→      const pkt = batteryQueryPacket(false, 32);
+  1141→      const logs: TxAttemptLog[] = [];
+  1142→      for (const r of routes) {
+  1143→        const wait = this.batteryWaiter(380); // waiter ANTES do send — sem corrida
+  1144→        await this.sendRoute(r, pkt, "probe bateria", false, logs);
+  1145→        const percent = await wait;
+  1146→        if (percent !== null) {
+  1147→          this.dongleRoute = { endpointKey: r.ep.key, label: r.label, mode: r.mode, pad: r.pad };
+  1148→          f75log.ok(
+  1149→            `✔ Rota do receiver VALIDADA por resposta do teclado: ${r.label} · ${r.mode}${r.pad ? ` padded ${r.pad}B` : ""} — bateria ${percent}%. RGB/desempenho/bateria usam esta rota.`
+  1150→          );
+  1151→          this.lastTx = { label: "probe de rotas (validada)", attempts: logs };
+  1152→          return percent;
+  1153→        }
+  1154→        if (verbose) f75log.debug(`Rota ${r.label} · ${r.mode}: aceita pelo SO, sem resposta do teclado — próxima…`);
+  1155→      }
+  1156→      this.lastTx = { label: "probe de rotas (sem resposta)", attempts: logs };
+  1157→      if (verbose)
+  1158→        f75log.warn(
+  1159→          "Nenhuma rota recebeu resposta do teclado. O receiver está ligado no PC, mas o teclado provavelmente NÃO está falando com ele: aperte qualquer tecla pra acordar, segure Fn pra ver o modo na telinha (precisa ser 2.4G) e re-emparelhe com Fn+R segurado ~3s se precisar."
+  1160→        );
+  1161→      return null;
+  1162→    } finally {
+  1163→      this.probing = false;
+  1164→    }
+  1165→  }
+  1166→
+  1167→  /** Label da rota calibrada — vai pro painel de diagnóstico. */
+  1168→  get dongleRouteLabel(): string | null {
+  1169→    const r = this.dongleRoute;
+  1170→    if (!r) return null;
+  1171→    return `${r.label} · ${r.mode}${r.pad ? ` padded ${r.pad}B` : ""} — validada por resposta do teclado`;
+  1172→  }
+  1173→
+  1174→  /**
+  1175→   * Auto-calibração ao vincular o receiver: roda a sonda de rotas em modo
+  1176→   * silencioso. Valida a rota ANTES do primeiro Aplicar e de quebra já
+  1177→   * traz a bateria se o teclado estiver acordado.
+  1178→   */
+  1179→  private async calibrateDongle(): Promise<void> {
+  1180→    if (this.dongleInterfaces.length === 0) return;
+  1181→    try {
+  1182→      const percent = await this.probeDongleRoutes(false);
+  1183→      if (percent !== null) this.onBattery?.(percent);
+  1184→      else f75log.debug("Sonda de rotas concluída sem resposta — RGB usará a melhor rota candidata; re-sonda a cada clique em bateria.");
+  1185→    } catch (err) {
+  1186→      f75log.warn(`Sonda de rotas do receiver falhou: ${err instanceof Error ? err.message : String(err)} — a matriz re-tenta no próximo comando.`);
+  1187→    }
+  1188→  }
+  1189→
+  1190→  /**
+  1191→   * Query de bateria pública: roda a sonda de rotas (que usa a PRÓPRIA
+  1192→   * resposta de bateria pra validar a rota de TX do receiver).
+  1193→   */
+  1194→  async queryBattery(quiet = false): Promise<number | null> {
+  1195→    if (this.dongleInterfaces.length === 0) throw new F75Error(this.requireMessage("dongle"));
+  1196→    if (!quiet) f75log.info("🔋 Consultando bateria — a resposta real do teclado valida a rota de TX do receiver.");
+  1197→    const percent = await this.probeDongleRoutes(!quiet);
+  1198→    if (percent !== null) this.onBattery?.(percent);
+  1199→    return percent;
+  1200→  }
+  1201→
+  1202→  /* ---------------------------- receiver: RGB ------------------------------- */
+  1203→
+  1204→  /**
+  1205→   * RGB com escolha automática de transporte: receiver 2.4G quando presente
+  1206→   * (rota validada pela sonda), senão a sequência COM FIO do driver nativo
+  1207→   * (applyWiredStandardRGB — sessão 04 18 → select 04 13 → payload de lighting
+  1208→   * → commit 04 02 → finalizar 04 f0, tudo por feature de 64 B no 0xFF13).
+  1209→   */
+  1210→  async applyRGB(settings: RgbSettings): Promise<void> {
+  1211→    if (this.dongleInterfaces.length > 0) {
+  1212→      f75log.info(`🎨 Aplicando RGB via receiver 2.4G: ${describeWireless(rgbLEDReport(settings)).replace("LED 0x05 · ", "")}`);
+  1213→      await this.tx(rgbCommitReport(), "RGB commit", "dongle", ["output", "feature"]);
+  1214→      await sleep(50);
+  1215→      await this.tx(rgbLEDReport(settings), "RGB LED", "dongle", ["output", "feature"]);
+  1216→      f75log.ok("RGB aplicado via receiver 2.4G.");
+  1217→      return;
+  1218→    }
+  1219→    if (this.wiredCommand) {
+  1220→      f75log.info("🎨 Receiver ausente — aplicando RGB via CABO (sequência wired do nativo, 0xFF13 feature 64B)…");
+  1221→      await this.applyWiredRGB(settings);
+  1222→      return;
+  1223→    }
+  1224→    throw new F75Error(this.requireMessage("dongle"));
+  1225→  }
+  1226→
+  1227→  /** RGB pelo cabo — byte a byte igual a applyWiredStandardRGB do nativo. */
+  1228→  private async applyWiredRGB(s: RgbSettings): Promise<void> {
+  1229→    const mode = Math.min(Math.max(s.mode, 0), 31);
+  1230→    await this.commandExchange(wiredPacket(0x04, 0x18), "RGB cabo · abrir sessão");
+  1231→    await sleep(40);
+  1232→    const select = wiredPacket(0x04, 0x13);
+  1233→    select[8] = 0x01;
+  1234→    await this.commandExchange(select, "RGB cabo · selecionar bloco de lighting");
+  1235→    await sleep(40);
+  1236→    const payload = new Uint8Array(AULA.commandLength);
+  1237→    payload[0] = mode;
+  1238→    if (mode !== 0) {
+  1239→      payload[1] = (s.color >> 16) & 0xff;
+  1240→      payload[2] = (s.color >> 8) & 0xff;
+  1241→      payload[3] = s.color & 0xff;
+  1242→      payload[8] = s.colorful ? 1 : 0;
+  1243→      payload[9] = Math.min(Math.max(s.brightness, 1), 5);
+  1244→      payload[10] = Math.min(Math.max(s.speed, 1), 5);
+  1245→      payload[11] = Math.min(Math.max(s.direction, 0), 3);
+  1246→    }
+  1247→    payload[14] = 0xaa;
+  1248→    payload[15] = 0x55;
+  1249→    await this.commandExchange(payload, `RGB cabo · payload modo ${mode} ${intToHex(s.color)}`);
+  1250→    await sleep(40);
+  1251→    await this.commandExchange(wiredPacket(0x04, 0x02), "RGB cabo · commit");
+  1252→    await sleep(40);
+  1253→    await this.commandExchange(wiredPacket(0x04, 0xf0), "RGB cabo · finalizar");
+  1254→    f75log.ok("RGB aplicado via cabo 0xFF13 (applyWiredStandardRGB do nativo).");
+  1255→  }
+  1256→
+  1257→  /* ------------------------ receiver: performance/jogo ---------------------- */
+  1258→
+  1259→  /**
+  1260→   * Um único report 0x07 com response level + sleep + flags de jogo.
+  1261→   * Diferente do nativo (que zera as flags no applyPerformance), aqui as flags
+  1262→   * SEMPRE vão junto — impossível "perder" o estado do Alt+Tab sem querer.
+  1263→   */
+  1264→  async applyPerformance(options: PerformanceOptions): Promise<void> {
+  1265→    const report = gameModeReport(
+  1266→      Math.min(Math.max(options.level, 1), 5),
+  1267→      1,
+  1268→      Math.min(Math.max(options.sleep, 0), 3),
+  1269→      {
+  1270→        game: options.game,
+  1271→        lockAltTab: options.lockAltTab,
+  1272→        lockAltF4: options.lockAltF4,
+  1273→        lockWin: options.lockWin,
+  1274→      }
+  1275→    );
+  1276→    f75log.info(
+  1277→      `⚡ Aplicando: level ${options.level} · sleep ${options.sleep} · game=${options.game ? 1 : 0} altTab=${options.lockAltTab ? 1 : 0} altF4=${options.lockAltF4 ? 1 : 0} win=${options.lockWin ? 1 : 0}`
+  1278→    );
+  1279→    if (this.dongleInterfaces.length > 0) {
+  1280→      await this.tx(report, "performance + game mode", "dongle", ["output", "feature"]);
+  1281→      f75log.ok("Performance e flags de jogo aplicadas via receiver 2.4G.");
+  1282→      return;
+  1283→    }
+  1284→    if (this.wiredCommand) {
+  1285→      // Fallback com fio do nativo (sendRawCompatibleReport): mesmo report 0x07
+  1286→      // padding a 64 B por feature/output no canal 0xFF13.
+  1287→      f75log.info("Receiver ausente — performance via CABO (fallback wired do nativo, report 0x07 padded a 64B)…");
+  1288→      await this.tx(padTo(report, AULA.commandLength), "performance + game mode (cabo)", "wiredCommand", ["feature", "output"]);
+  1289→      f75log.ok("Performance aplicada via cabo 0xFF13.");
+  1290→      return;
+  1291→    }
+  1292→    throw new F75Error(this.requireMessage("dongle"));
+  1293→  }
+  1294→
+  1295→  /* ------------------------------ diagnóstico ------------------------------- */
+  1296→
+  1297→  getDiagnostics(): DriverDiagnostics {
+  1298→    const endpoints: EndpointDiag[] = [];
+  1299→    const push = (ep: Endpoint | undefined, role: string) => {
+  1300→      if (!ep) return;
+  1301→      endpoints.push({
+  1302→        key: ep.key,
+  1303→        role,
+  1304→        product: ep.device.productName || "HID",
+  1305→        vid: `0x${ep.device.vendorId.toString(16).padStart(4, "0")}`,
+  1306→        pid: `0x${ep.device.productId.toString(16).padStart(4, "0")}`,
+  1307→        usagePages: ep.summary.usagePages.map((p) => `0x${p.toString(16)}`).join("/"),
+  1308→        hasNumberedIds: ep.summary.hasNumberedIds,
+  1309→        maxOutput: ep.summary.maxOutput,
+  1310→        maxFeature: ep.summary.maxFeature,
+  1311→        outputIds: fmtSizes(ep.summary.outputIds),
+  1312→        featureIds: fmtSizes(ep.summary.featureIds),
+  1313→        opened: ep.device.opened,
+  1314→      });
+  1315→    };
+  1316→    push(this.wiredCommand, "cabo · comando");
+  1317→    push(this.wiredDisplay, "cabo · display");
+  1318→    this.dongleInterfaces.forEach((ep, i) => push(ep, i === 0 ? "receiver · preferido" : `receiver · alt ${i}`));
+  1319→    return { endpoints, lastTx: this.lastTx, dongleRoute: this.dongleRouteLabel };
+  1320→  }
+  1321→}
+  1322→
