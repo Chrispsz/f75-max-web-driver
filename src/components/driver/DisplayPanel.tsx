@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Eraser, Film, Image as ImageIcon, Loader2, Monitor, Sparkles, Upload, X } from "lucide-react";
+import { Clock, Eraser, Film, Image as ImageIcon, Layers, Loader2, Monitor, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,8 @@ export function DisplayPanel({
   const [progress, setProgress] = useState({ sent: 0, total: 0, eta: 0 });
   const [uploading, setUploading] = useState(false);
   const [autoClock, setAutoClock] = useState(false);
+  const [eraseArmed, setEraseArmed] = useState(false);
+  const eraseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const preparedRef = useRef<Prepared | null>(null);
   const cancelRef = useRef({ cancelled: false });
@@ -160,6 +162,24 @@ export function DisplayPanel({
     f75log.warn("Cancelamento solicitado — parando após o bloco atual…");
   };
 
+  const activateSlot = () =>
+    void run("slot", () => driver!.activateDisplaySlot(Number(slotRef.current)));
+
+  const eraseMemory = () => {
+    if (!eraseArmed) {
+      setEraseArmed(true);
+      if (eraseTimer.current) clearTimeout(eraseTimer.current);
+      eraseTimer.current = setTimeout(() => setEraseArmed(false), 6000);
+      f75log.warn("Apagar memória de display: clique de novo pra confirmar (apaga TODOS os slots).");
+      return;
+    }
+    if (eraseTimer.current) clearTimeout(eraseTimer.current);
+    setEraseArmed(false);
+    void run("erase", async () => {
+      await driver!.eraseDisplayMemory((stage) => f75log.info(`· ${stage}`));
+    });
+  };
+
   const percent = progress.total > 0 ? Math.round((progress.sent / progress.total) * 100) : 0;
 
   return (
@@ -240,29 +260,18 @@ export function DisplayPanel({
               </div>
 
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <FieldLabel>Slot</FieldLabel>
-                    <Segmented
-                      disabled={uploading}
-                      value={slot}
-                      onChange={setSlot}
-                      options={["1", "2", "3"].map((s) => ({ value: s, label: `Slot ${s}` }))}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <FieldLabel>Ajuste</FieldLabel>
-                    <Segmented
-                      disabled={uploading}
-                      value={fit}
-                      onChange={reencodeWithFit}
-                      options={[
-                        { value: "contain", label: "Conter", title: "Cabe inteira, com bordas" },
-                        { value: "cover", label: "Preencher", title: "Cobre tudo, corta bordas" },
-                        { value: "stretch", label: "Esticar", title: "Força 128×128" },
-                      ]}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Ajuste</FieldLabel>
+                  <Segmented
+                    disabled={uploading}
+                    value={fit}
+                    onChange={reencodeWithFit}
+                    options={[
+                      { value: "contain", label: "Conter", title: "Cabe inteira, com bordas" },
+                      { value: "cover", label: "Preencher", title: "Cobre tudo, corta bordas" },
+                      { value: "stretch", label: "Esticar", title: "Força 128×128" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -296,6 +305,59 @@ export function DisplayPanel({
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-zinc-800 bg-zinc-900/50">
+        <CardContent className="space-y-4 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel>Slot de destino</FieldLabel>
+              <Segmented
+                disabled={uploading || !ready}
+                value={slot}
+                onChange={setSlot}
+                options={["1", "2", "3"].map((s) => ({ value: s, label: `Slot ${s}` }))}
+              />
+            </div>
+            <Button
+              onClick={activateSlot}
+              disabled={!ready || busy !== null || uploading}
+              variant="outline"
+              size="sm"
+              className="h-8 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800"
+              title="Troca o conteúdo exibido sem reenviar — usa metadados + commit do protocolo nativo"
+            >
+              {busy === "slot" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Layers className="mr-1.5 h-3.5 w-3.5" />}
+              Ativar slot {slot}
+            </Button>
+          </div>
+          <p className="text-[11px] leading-relaxed text-zinc-500">
+            Enviar pro slot <strong className="text-zinc-300">{slot}</strong> já ativa o conteúdo no commit. “Ativar” troca pro slot {slot} sem reenviar — se a telinha não mudar, seu firmware só troca no upload (reenvie a imagem).
+          </p>
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-800/70 pt-3">
+            <div className="flex items-center gap-2.5">
+              <Trash2 className={`h-4 w-4 ${eraseArmed ? "text-rose-400" : "text-zinc-500"}`} />
+              <div>
+                <p className="text-xs font-semibold">Apagar memória de display</p>
+                <p className="text-[11px] text-zinc-500">remove o conteúdo de TODOS os slots · dois cliques</p>
+              </div>
+            </div>
+            <Button
+              onClick={eraseMemory}
+              disabled={!ready || busy !== null}
+              variant="outline"
+              size="sm"
+              className={`h-8 ${
+                eraseArmed
+                  ? "border-rose-500 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25"
+                  : "border-zinc-700 bg-transparent text-zinc-400 hover:bg-zinc-800"
+              }`}
+            >
+              {busy === "erase" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Eraser className="mr-1.5 h-3.5 w-3.5" />}
+              {eraseArmed ? "Confirmar" : "Apagar tudo"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

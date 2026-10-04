@@ -280,3 +280,25 @@ Stage Summary:
 - Causa raiz real esclarecida: não era mais o NotAllowedError (isso já tinha ido) — era rota não verificável: o driver aceitava a 1ª rota que o SO aceitava e o firmware descartava em silêncio
 - v4 = validação por EVIDÊNCIA (resposta de bateria) em vez de suposição — a rota certa é descoberta automaticamente, mesmo que o firmware deste receiver use 0xFF59/64B/SET_REPORT em vez de 0xFF60/32B
 - Caminho de iteração: usuário clica "Sondar rotas" com o teclado acordado no 2.4G → se validar, RGB funciona; se nada responder, o log diz exatamente o que conferir (Fn / Fn+R / acordar teclado)
+
+---
+Task ID: 15
+Agent: Z.ai Code (main)
+Task: "pelo visto ta funciondo legal" — log do usuário confirmou rota 0xff59/64B validada por sonda (bateria 100%, RGB com ACK 0x05/0x0f ecoado, perf 0x07 ecoado, upload slot 2 OK em 1.2s). Novos pedidos: (1) trocar o slot da telinha (slots 1 e 2 preenchidos), (2) remover "Bloqueios independentes", (3) resposta sobre a capacidade total extraível do teclado.
+
+Work Log:
+- Re-baixou os fontes nativos (jsDelivr): LinuxHIDBackend.swift, AulaDevice.swift, AppViewModel.swift, ContentView.swift, DisplayEncoder.swift
+- Conclusão de fonte: o driver nativo NÃO tem comando dedicado "ativar slot" — AppViewModel só tem `@Published var slot = 1` como alvo do PRÓXIMO upload; a telinha mostra o último slot escrito (metadados 04 72 [slot] + commit 04 02)
+- ACK do firmware decodificado do log real do usuário: GET feature responde [0]=cmd [3]=0x01 quando aceito (04 02 00 01, 04 72 02 01)
+- driver.ts: commandExchange/readFeatureAck agora RETORNAM o ACK (DataView|null); novo helper estático ackOk() checa byte[3]===0x01; zeroPages extraído pra método privado (reuso)
+- NOVO activateDisplaySlot(slot): abrir sessão 04 18 → metadados 04 72 [slot] com 0 blocos → commit 04 02, com verificação honesta do ACK: se 0x01, "aceito, telinha deve trocar em ~2s"; senão, aviso claro de que o caminho garantido é reenviar a imagem (upload ativa no commit)
+- NOVO eraseDisplayMemory(onStage): bloco de limpeza de display do factoryReset nativo isolado (04 19 → 04 15 [8]=0x08 → 8 zero pages → commit) — apaga TODOS os slots sem tocar keymap/lighting
+- DisplayPanel: card "Slot de destino" com Segmented 1/2/3 compartilhado + botão "Ativar slot N" + nota explicativa; "Apagar memória de display" com confirmação em dois cliques (armed 6s); slot saiu do bloco de conteúdo — upload continua usando o slot compartilhado e ativa no commit
+- F75App: REMOVIDO "Bloqueios independentes" (Alt+Tab/Alt+F4/Win) + botão "Desbloquear tudo"; PerfState simplificado pra {level, sleep, game}; Modo jogo agora usa a semântica EXATA do firmware nativo (setGameMode manda game=altTab=altF4=win juntos — Win lock é o único com efeito real: tecla morre + LED branco fixo); MonoLine atualizado; versões v3/v4 → v5
+- Validação: eslint limpo, tsc limpo (app), HTTP 200; Agent Browser — sim destrava tudo, "Ativar slot 2" gera sequência byte-exata 04 18/04 72 02/04 02 no console, perf com modo jogo manda 0x07 game=1 altTab=1 altF4=1 win=1 ck=ok, Tela/Desempenho renderizam sem os bloqueios, mobile 390px footer grudado, desktop 1440px ok, zero erros de console/página
+
+Stage Summary:
+- Troca de slot SEM reenviar: botão "Ativar slot" (metadados 0 blocos + commit, ACK validado) — com fallback honesto: se o firmware da unidade só troca no upload, reenviar a imagem pro slot (1 clique, ~1s pra imagem estática)
+- Apagar memória de display disponível isolada (remover GIFs sem factory reset)
+- UI enxuta: bloqueios independentes fora; Modo jogo = comportamento nativo de verdade
+- Capacidade total mapeada (resposta ao usuário): cabo = display (slots/clear/relógio) + factory reset; 2.4G = RGB 20 efeitos, perf 1-5, sleep, game/win-lock, bateria; fora do alcance (sem protocolo conhecido): remap por tecla, edição de macros, rate de polling

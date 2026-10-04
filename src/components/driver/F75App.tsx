@@ -57,9 +57,6 @@ export interface PerfState {
   level: number;
   sleep: number;
   game: boolean;
-  lockAltTab: boolean;
-  lockAltF4: boolean;
-  lockWin: boolean;
 }
 
 type Run = (label: string, action: () => Promise<void>) => Promise<void>;
@@ -89,7 +86,7 @@ export default function F75App() {
   const [routeLabel, setRouteLabel] = useState<string | null>(null);
 
   const [rgb, setRgbState] = useState<RgbSettings>({ mode: 1, brightness: 3, speed: 2, direction: 0, colorful: false, color: hexToInt(CYAN) });
-  const [perf, setPerfState] = useState<PerfState>({ level: 2, sleep: 2, game: false, lockAltTab: false, lockAltF4: false, lockWin: false });
+  const [perf, setPerfState] = useState<PerfState>({ level: 2, sleep: 2, game: false });
   const [resetArmed, setResetArmed] = useState(false);
 
   const setRgb = useCallback((patch: Partial<RgbSettings>) => setRgbState((prev) => ({ ...prev, ...patch })), []);
@@ -121,7 +118,7 @@ export default function F75App() {
     } catch {
       setInIframe(true);
     }
-    f75log.info("F75 Max Web Driver v3 pronto — protocolo nativo portado, 100% local. Console espelhado aqui e no F12 (filtro [F75]).");
+    f75log.info("F75 Max Web Driver v5 pronto — protocolo nativo portado, slots de display e rota validada por sonda. 100% local. Console espelhado aqui e no F12 (filtro [F75]).");
     driver
       .reconnectSaved(true)
       .then((s) => {
@@ -196,23 +193,20 @@ export default function F75App() {
   const applyRgb = () => void run("rgb", () => driverRef.current!.applyRGB(rgb));
 
   const applyPerf = () =>
-    void run("perf", () =>
-      driverRef.current!.applyPerformance({
+    void run("perf", () => {
+      const game = perf.game;
+      // Semântica do firmware nativo (setGameMode): game mode liga as quatro
+      // flags JUNTAS — Alt+Tab/Alt+F4 o firmware ignora, Win lock é o que
+      // produz efeito visível (tecla Win morre + LED branco fixo).
+      return driverRef.current!.applyPerformance({
         level: perf.level,
         sleep: perf.sleep,
-        game: perf.game,
-        lockAltTab: perf.lockAltTab,
-        lockAltF4: perf.lockAltF4,
-        lockWin: perf.lockWin,
-      })
-    );
-
-  const unlockAll = () => {
-    setPerf({ game: false, lockAltTab: false, lockAltF4: false, lockWin: false });
-    void run("perf", () =>
-      driverRef.current!.applyPerformance({ level: perf.level, sleep: perf.sleep, game: false, lockAltTab: false, lockAltF4: false, lockWin: false })
-    );
-  };
+        game,
+        lockAltTab: game,
+        lockAltF4: game,
+        lockWin: game,
+      });
+    });
 
   const factoryReset = () => {
     if (!resetArmed) {
@@ -303,7 +297,7 @@ export default function F75App() {
               </Chip>
               <Chip title="Nenhuma telemetria — nada sai da máquina">100% local</Chip>
             </div>
-            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v4 · rota do receiver validada por sonda</p>
+            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v5 · slots de display + rota do receiver validada por sonda</p>
           </div>
         </aside>
 
@@ -372,9 +366,7 @@ export default function F75App() {
                 <LightingPanel rgb={rgb} setRgb={setRgb} canSend={wirelessReady} busy={busy} onApply={applyRgb} />
               )}
 
-              {section === "performance" && (
-                <PerformancePanel perf={perf} setPerf={setPerf} canSend={wirelessReady} busy={busy} onApply={applyPerf} onUnlock={unlockAll} />
-              )}
+              {section === "performance" && <PerformancePanel perf={perf} setPerf={setPerf} canSend={wirelessReady} busy={busy} onApply={applyPerf} />}
 
               {section === "display" && (
                 <DisplayPanel driver={driverReady ? driverRef.current : null} run={run} busy={busy} ready={status.sim || wiredReady} sim={status.sim} />
@@ -670,7 +662,6 @@ function PerformancePanel(props: {
   canSend: boolean;
   busy: string | null;
   onApply: () => void;
-  onUnlock: () => void;
 }) {
   const { perf, setPerf, canSend, busy } = props;
 
@@ -680,7 +671,7 @@ function PerformancePanel(props: {
         icon={Zap}
         title="Desempenho"
         desc="Latência, suspensão e modo jogo"
-        right={<MonoLine>{`0x07 · lvl ${perf.level} · sleep ${perf.sleep} · game=${perf.game ? 1 : 0} altTab=${perf.lockAltTab ? 1 : 0} altF4=${perf.lockAltF4 ? 1 : 0} win=${perf.lockWin ? 1 : 0}`}</MonoLine>}
+        right={<MonoLine>{`0x07 · lvl ${perf.level} · sleep ${perf.sleep} · jogo=${perf.game ? 1 : 0} · winLock=${perf.game ? 1 : 0}`}</MonoLine>}
       />
 
       {!canSend && (
@@ -710,41 +701,15 @@ function PerformancePanel(props: {
           <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
             <div>
               <p className="text-xs font-semibold">Modo jogo</p>
-              <p className="text-[11px] text-zinc-500">perfil de resposta pra jogo</p>
+              <p className="text-[11px] text-zinc-500">trava a tecla Win (LED branco fixo) — comportamento do firmware</p>
             </div>
             <Switch checked={perf.game} disabled={!canSend} onCheckedChange={(v) => setPerf({ game: v })} aria-label="Modo jogo" />
           </div>
 
-          <div className="space-y-2">
-            <FieldLabel>Bloqueios independentes</FieldLabel>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {(
-                [
-                  { key: "lockAltTab", label: "Alt+Tab", hint: "firmware ignora o atalho" },
-                  { key: "lockAltF4", label: "Alt+F4", hint: "firmware ignora o atalho" },
-                  { key: "lockWin", label: "Tecla Win", hint: "LED branco fixo = ligado" },
-                ] as const
-              ).map((item) => (
-                <div key={item.key} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-                  <div>
-                    <p className="text-xs font-semibold">{item.label}</p>
-                    <p className="text-[10px] text-zinc-500">{item.hint}</p>
-                  </div>
-                  <Switch checked={perf[item.key]} disabled={!canSend} onCheckedChange={(v) => setPerf({ [item.key]: v })} aria-label={`Bloquear ${item.label}`} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
-              {busy === "perf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-              Aplicar
-            </Button>
-            <Button onClick={props.onUnlock} disabled={!canSend || busy !== null} variant="outline" className="h-10 border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
-              Desbloquear tudo
-            </Button>
-          </div>
+          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
+            {busy === "perf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+            Aplicar
+          </Button>
         </CardContent>
       </Card>
     </section>

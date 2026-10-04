@@ -786,16 +786,18 @@ export class F75Driver {
     throw new F75Error(`TX falhou em ${logs.length} tentativa(s) — ${label}. ${this.requireMessage(role)} Detalhe: ${summary || "nenhuma estratégia aplicável ao descritor"}`);
   }
 
-  /** SET feature + GET feature de ACK — mesma tolerância do commandExchange nativo. */
-  private async commandExchange(packet: Uint8Array, label: string): Promise<void> {
+  /** SET feature + GET feature de ACK — mesma tolerância do commandExchange nativo.
+   *  Retorna o ACK lido (DataView) quando disponível — o byte [3] é o status
+   *  do firmware (0x01 = ok, visível nos logs: `04 02 00 01`, `04 72 02 01`…). */
+  private async commandExchange(packet: Uint8Array, label: string): Promise<DataView | null> {
     await this.tx(packet, label, "wiredCommand", ["feature", "output"]);
-    await this.readFeatureAck(label);
+    return this.readFeatureAck(label);
   }
 
-  private async readFeatureAck(label: string): Promise<void> {
-    if (this.simMode) return;
+  private async readFeatureAck(label: string): Promise<DataView | null> {
+    if (this.simMode) return null;
     const ep = this.wiredCommand;
-    if (!ep) return;
+    if (!ep) return null;
     const declared = ep.summary.featureIds.map((r) => r.id);
     const ids = [...new Set([0, ...declared, 0x04])];
     for (const id of ids) {
@@ -803,12 +805,19 @@ export class F75Driver {
         const view = await ep.device.receiveFeatureReport(id);
         f75log.rx(`GET feature id=0x${hex2(id)} · ${label} · ${view.byteLength}B`);
         f75log.dump(view, `GET feature · ${label}`);
-        return;
+        return view;
       } catch {
         /* tenta próximo id */
       }
     }
     f75log.debug(`GET feature indisponível (${label}) — seguindo sem ACK (o conteúdo não é validado nem pelo nativo).`);
+    return null;
+  }
+
+  /** ACK de comando do cabo: byte [3] do GET feature = 0x01 quando o firmware aceita. */
+  private static ackOk(ack: DataView | null): boolean {
+    if (!ack || ack.byteLength < 4) return false;
+    return new Uint8Array(ack.buffer, ack.byteOffset, ack.byteLength)[3] === 0x01;
   }
 
   /* ------------------------------- papel/moeda ------------------------------ */
@@ -929,25 +938,86 @@ export class F75Driver {
     f75log.ok(`Upload concluído no slot ${slot}: ${stream.chunkCount} blocos em ${seconds.toFixed(1)} s (${(stream.chunkCount / Math.max(seconds, 0.001)).toFixed(0)} blocos/s).`);
   }
 
+  /* ------------------------- display: slots e memória ----------------------- */
+
+  /** Páginas zeradas de 64 B — mesmo ritmo do nativo (40 ms entre writes). */
+  private async zeroPages(count: number): Promise<void> {
+    const zero = new Uint8Array(AULA.commandLength);
+    for (let i = 0; i < count - 1; i++) {
+      await this.tx(zero, `zero page ${i + 1}/${count}`, "wiredCommand", ["feature", "output"], false);
+      await sleep(40);
+    }
+    await this.commandExchange(zero, `zero page final ${count}/${count}`);
+  }
+
+  /**
+   * Troca o slot exibido pela telinha SEM reenviar conteúdo.
+   *
+   * O driver nativo não tem comando dedicado de "ativar slot" — ele só
+   * escreve num slot via metadados 0x04 0x72 + commit 0x04 0x02, e a telinha
+   * passa a mostrar o último slot escrito. Esta função reproduz esse caminho
+   * no modo mínimo: abrir sessão → metadados apontando pro slot com 0 blocos
+   * de payload → commit. O ACK do firmware (byte [3] do GET feature = 0x01)
+   * confirma se o comando foi aceito.
+   *
+   * Se a telinha não mudar em ~2 s, o firmware da sua unidade só troca de
+   * slot no upload — aí o caminho garantido é reenviar a imagem pro slot.
+   */
+  async activateDisplaySlot(slot: number): Promise<void> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 255) {
+      throw new F75Error("Slot precisa ser um número entre 1 e 255.");
+    }
+    if (!this.simMode && !this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
+
+    f75log.info(`📺 Ativando slot ${slot} da telinha (sem reenviar conteúdo)…`);
+    await this.commandExchange(wiredPacket(0x04, 0x18), `slot ${slot} · abrir sessão`);
+    const metadata = wiredPacket(0x04, 0x72);
+    metadata[2] = slot;
+    // [8..9] = 0 blocos — a sessão aponta pro slot sem payload de dados
+    const metaAck = await this.commandExchange(metadata, `slot ${slot} · metadados (0 blocos)`);
+    const commitAck = await this.commandExchange(wiredPacket(0x04, 0x02), `slot ${slot} · commit`);
+
+    if (F75Driver.ackOk(commitAck) || F75Driver.ackOk(metaAck)) {
+      f75log.ok(
+        `✔ Firmware aceitou a ativação do slot ${slot} (ACK 0x01). A telinha deve trocar em até ~2 s — se continuar no outro conteúdo, seu firmware só troca de slot no upload: reenvie a imagem pro slot ${slot}.`
+      );
+    } else {
+      f75log.warn(
+        `Comando aceito pelo SO, mas sem ACK de sucesso do firmware — a telinha provavelmente NÃO mudou. Caminho garantido: reenvie a imagem pro slot ${slot} (o upload ativa o slot automaticamente no commit).`
+      );
+    }
+  }
+
+  /**
+   * Apaga TODA a memória de display (todos os slots) — exatamente o bloco de
+   * limpeza do factoryReset nativo, isolado pra poder remover GIFs sem
+   * resetar keymap/lighting. Requer cabo USB-C.
+   */
+  async eraseDisplayMemory(onStage: (stage: string) => void): Promise<void> {
+    if (!this.simMode && (!this.wiredCommand || !this.wiredDisplay)) {
+      throw new F75Error(this.requireMessage("wiredCommand"));
+    }
+    onStage("Apagando memória de display (todos os slots)");
+    await this.commandExchange(wiredPacket(0x04, 0x19), "display · clear memory");
+    const clearSlots = wiredPacket(0x04, 0x15);
+    clearSlots[8] = 0x08;
+    await this.commandExchange(clearSlots, "display · clear slots");
+    await this.zeroPages(8);
+    await this.commandExchange(wiredPacket(0x04, 0x02), "display · commit");
+    f75log.ok("✅ Memória de display apagada — replugue o cabo pra telinha reassumir.");
+  }
+
   /* ------------------------------ factory reset ----------------------------- */
 
   async factoryReset(onStage: (stage: string) => void): Promise<void> {
     const exchange = async (packet: Uint8Array, label: string) => this.commandExchange(packet, label);
-    const zero = new Uint8Array(AULA.commandLength);
-    const zeroPages = async (count: number) => {
-      for (let i = 0; i < count - 1; i++) {
-        await this.tx(zero, `zero page ${i + 1}/${count}`, "wiredCommand", ["feature", "output"], false);
-        await sleep(40);
-      }
-      await exchange(zero, `zero page final ${count}/${count}`);
-    };
 
     onStage("Apagando memória de display");
     await exchange(wiredPacket(0x04, 0x19), "reset · clear display memory");
     const clearSlots = wiredPacket(0x04, 0x15);
     clearSlots[8] = 0x08;
     await exchange(clearSlots, "reset · clear slots");
-    await zeroPages(8);
+    await this.zeroPages(8);
     await exchange(wiredPacket(0x04, 0x02), "reset · commit display");
 
     onStage("Resetando keymap e macros");
@@ -955,7 +1025,7 @@ export class F75Driver {
     const keymap = wiredPacket(0x04, 0x11);
     keymap[8] = 0x09;
     await exchange(keymap, "reset · keymap header");
-    await zeroPages(9);
+    await this.zeroPages(9);
     await exchange(wiredPacket(0x04, 0x02), "reset · commit keymap");
     await exchange(wiredPacket(0x04, 0xf0), "reset · finalizar keymap");
 
@@ -964,7 +1034,7 @@ export class F75Driver {
     const lighting = wiredPacket(0x04, 0x27);
     lighting[8] = 0x09;
     await exchange(lighting, "reset · lighting header");
-    await zeroPages(9);
+    await this.zeroPages(9);
     await exchange(wiredPacket(0x04, 0x02), "reset · commit lighting");
     await exchange(wiredPacket(0x04, 0xf0), "reset · finalizar lighting");
 
