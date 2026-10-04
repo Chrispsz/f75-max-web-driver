@@ -362,3 +362,15 @@ Stage Summary:
 - Telinha v8 = só o caminho garantido: upload (que ativa o slot no commit) + Tela preta (apaga GIF sobrescrevendo) + relógio manual. Nada que travar o teclado, resetar o LED ou piscar a tela.
 - Pack de 6 artes com preview na UI, loops perfeitos e paleta RGB565-exata; badge aprovado mantido byte a byte.
 - Recuperação do estado atual da telinha do usuário: enviar qualquer arte de novo (upload v7+ sobrescreve a memória com dados limpos) ou Tela preta.
+---
+Task ID: 19
+Agent: Z.ai Code (main)
+Task: Remover artes "Vórtice" e "F75 badge" do pack (usuário: shine é melhor que o badge).
+
+Work Log:
+- DisplayPanel: READY_ARTS reduzido a 4 (shine, matrix, eq, aurora) — shine herda a desc "logo prata + brilho ciano"; grid lg:grid-cols-4 (1 linha no desktop).
+- gen-art.mjs: funções f75Badge() e vortex() + writeArt delas removidos; cabeçalho e numeração atualizados; GIFs f75-badge.gif e vortex.gif apagados de public/art.
+- Validação: eslint limpo, HTTP 200, Agent Browser — grid mostra exatamente as 4 artes, sem erros.
+
+Stage Summary:
+- Pack final: F75 shine, Matrix ciano, Pulso EQ, Aurora ciano — todos com preview na UI e loop perfeito.

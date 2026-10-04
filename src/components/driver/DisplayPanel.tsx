@@ -28,10 +28,8 @@ interface Prepared {
 
 /** Pack de artes geradas pra composição branco/cinza + LED ciano (#41E8FF). */
 const READY_ARTS = [
-  { file: "/art/f75-badge.gif", name: "F75 badge", desc: "logo prata + brilho ciano" },
-  { file: "/art/f75-shine.gif", name: "F75 shine", desc: "brilho varrendo o logo" },
+  { file: "/art/f75-shine.gif", name: "F75 shine", desc: "logo prata + brilho ciano" },
   { file: "/art/matrix-ciano.gif", name: "Matrix ciano", desc: "chuva de glifos" },
-  { file: "/art/vortex.gif", name: "Vórtice", desc: "portal girando" },
   { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras + pico caindo" },
   { file: "/art/aurora-ciano.gif", name: "Aurora ciano", desc: "ondas gelo + estrela" },
 ] as const;
@@ -250,7 +248,7 @@ export function DisplayPanel({
             </div>
             <div className="space-y-1.5 border-t border-zinc-800/70 pt-3">
               <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza · loop perfeito</FieldLabel>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {READY_ARTS.map((a) => (
                   <button
                     key={a.file}

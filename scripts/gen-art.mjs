@@ -6,9 +6,9 @@
  * o pipeline do web driver (r>>3, g>>2, b>>3) reproduz essas cores sem perda.
  * Loop perfeito: todas as fases usam períodos inteiros sobre o total de frames.
  *
- * v8: F75 badge (intocado — aprovado), F75 shine (glint varrendo o logo +
- * partículas), Matrix ciano (chuva de glifos), Vórtice (portal girando),
- * Pulso EQ com pico que cai, Aurora com estrela cadente.
+ * v8: F75 shine (badge premium: glint varrendo o logo + partículas),
+ * Matrix ciano (chuva de glifos), Pulso EQ com pico que cai,
+ * Aurora com estrela cadente.
  *
  * Uso: bun scripts/gen-art.mjs  (saída em public/art/)
  */
@@ -153,40 +153,7 @@ function drawMax(fr, color = "GRAY3") {
   drawText(fr, "MAX", Math.round((W - mtotal) / 2), 106, mscale, color);
 }
 
-/* ------------------------- 1. F75 badge (30 frames) ------------------------ */
-function f75Badge() {
-  const FRAMES = 30;
-  const out = [];
-  for (let f = 0; f < FRAMES; f++) {
-    const t = f / FRAMES;
-    const fr = newFrame();
-    const corner = badgeBase(fr);
-    corner(6, 6, 1, 1, "GRAY2");
-    corner(121, 6, -1, 1, "GRAY2");
-    corner(6, 121, 1, -1, "GRAY2");
-    corner(121, 121, -1, -1, "GRAY2");
-
-    // pulso de brilho: sombra do logo alterna GRAY1 → CYAN_DIM → CYAN
-    const glow = 0.5 + 0.5 * Math.sin(t * TAU);
-    const shadow = glow > 0.55 ? "CYAN" : glow > 0.25 ? "CYAN_DIM" : "GRAY1";
-    drawLogo(fr, shadow);
-
-    // sublinhado varrendo (loop perfeito)
-    const sweep = Math.round(t * (W + 44)) - 44;
-    for (let x = 0; x < W; x++) {
-      const d = Math.abs(x - sweep);
-      if (d < 10) px(fr, x, 92, d < 3 ? "CYAN_HI" : "CYAN");
-      else if (d < 22) px(fr, x, 92, "CYAN_DIM");
-      else if (x % 4 === 0) px(fr, x, 92, "GRAY1");
-    }
-
-    drawMax(fr);
-    out.push(fr);
-  }
-  return out;
-}
-
-/* ------------------- 2. F75 shine (48 frames) · badge premium -------------- */
+/* ------------------- 1. F75 shine (48 frames) · badge premium -------------- */
 function f75Shine() {
   const FRAMES = 48;
   const rnd = mulberry(0x51a3 | 0);
@@ -251,7 +218,7 @@ function f75Shine() {
   return out;
 }
 
-/* -------------------- 3. Matrix ciano (72 frames) -------------------------- */
+/* -------------------- 2. Matrix ciano (72 frames) -------------------------- */
 function matrixCiano() {
   const FRAMES = 72;
   const COLS = 16; // célula 8×8
@@ -297,83 +264,7 @@ function matrixCiano() {
   return out;
 }
 
-/* ------------------------ 4. Vórtice (72 frames) --------------------------- */
-function vortex() {
-  const FRAMES = 72;
-  const rnd = mulberry(0x0f75);
-  // faíscas em órbita (1 volta por loop = seamless)
-  const sparks = Array.from({ length: 10 }, (_, i) => ({
-    r: 38 + Math.floor(rnd() * 20),
-    a0: (i / 10) * TAU,
-  }));
-
-  const out = [];
-  for (let f = 0; f < FRAMES; f++) {
-    const t = f / FRAMES;
-    const fr = newFrame();
-    const cx = (W - 1) / 2;
-    const cy = (H - 1) / 2;
-
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const dx = x - cx;
-        const dy = y - cy;
-        const r = Math.sqrt(dx * dx + dy * dy);
-        if (r > 63) {
-          px(fr, x, y, "BG");
-          continue;
-        }
-        const th = Math.atan2(dy, dx);
-        // 3 braços girando + anéis fluindo pra fora — freq. inteiras = seamless
-        const v =
-          Math.sin(th * 3 - r * 0.2 + t * TAU) * 0.65 +
-          Math.sin(r * 0.45 - t * TAU * 2) * 0.35;
-        const n = (v / 1.35 + 1) / 2;
-        let name;
-        if (n > 0.88) name = "WHITE";
-        else if (n > 0.74) name = "CYAN_HI";
-        else if (n > 0.56) name = "CYAN";
-        else if (n > 0.4) name = "CYAN_DIM";
-        else if (n > 0.26) name = "GRAY2";
-        else name = "BG";
-        px(fr, x, y, name);
-      }
-    }
-
-    // núcleo pulsante
-    const core = 0.5 + 0.5 * Math.sin(t * TAU);
-    const coreR = 4 + core * 3;
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        const dx = x - cx;
-        const dy = y - cy;
-        if (dx * dx + dy * dy <= coreR * coreR) px(fr, x, y, core > 0.6 ? "WHITE" : "CYAN_HI");
-      }
-
-    // faíscas prateadas em órbita
-    for (const s of sparks) {
-      const a = s.a0 + t * TAU;
-      const x = Math.round(cx + Math.cos(a) * s.r);
-      const y = Math.round(cy + Math.sin(a) * s.r * 0.92);
-      px(fr, x, y, "WHITE");
-      px(fr, x + (x > cx ? -2 : 2), y, "SILVER");
-    }
-
-    // moldura fina
-    for (let x = 0; x < W; x++) {
-      px(fr, x, 0, "GRAY1");
-      px(fr, x, 127, "GRAY1");
-    }
-    for (let y = 0; y < H; y++) {
-      px(fr, 0, y, "GRAY1");
-      px(fr, 127, y, "GRAY1");
-    }
-    out.push(fr);
-  }
-  return out;
-}
-
-/* ------------------------ 5. Pulso EQ (60 frames) ------------------------- */
+/* ------------------------ 3. Pulso EQ (60 frames) ------------------------- */
 function pulseEq() {
   const FRAMES = 60;
   const BARS = 14;
@@ -446,7 +337,7 @@ function pulseEq() {
   return out;
 }
 
-/* ------------------------ 6. Aurora ciano (90 frames) ---------------------- */
+/* ------------------------ 4. Aurora ciano (90 frames) ---------------------- */
 function auroraCiano() {
   const FRAMES = 90;
   // starfield determinístico
@@ -528,10 +419,8 @@ function writeArt(frames, file) {
 }
 
 mkdirSync("public/art", { recursive: true });
-writeArt(f75Badge(), "public/art/f75-badge.gif");
 writeArt(f75Shine(), "public/art/f75-shine.gif");
 writeArt(matrixCiano(), "public/art/matrix-ciano.gif");
-writeArt(vortex(), "public/art/vortex.gif");
 writeArt(pulseEq(), "public/art/pulse-eq.gif");
 writeArt(auroraCiano(), "public/art/aurora-ciano.gif");
 console.log(
