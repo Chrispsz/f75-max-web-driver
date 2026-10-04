@@ -41,10 +41,10 @@
 import {
   AULA,
   batteryQueryPacket,
-  describeWired,
   describeWireless,
   gameModeReport,
   hex2,
+  intToHex,
   parseBatteryReport,
   rgbCommitReport,
   rgbLEDReport,
@@ -67,7 +67,6 @@ export type EndpointRole = "wiredCommand" | "wiredDisplay" | "dongle";
 export type WireMode = "output" | "feature";
 
 export interface DriverStatus {
-  sim: boolean;
   wiredCommand: boolean;
   wiredDisplay: boolean;
   dongle: boolean;
@@ -99,7 +98,6 @@ export interface TxAttemptDiag {
 }
 
 export interface DriverDiagnostics {
-  sim: boolean;
   endpoints: EndpointDiag[];
   lastTx: { label: string; attempts: TxAttemptDiag[] } | null;
   dongleRoute: string | null;
@@ -218,7 +216,6 @@ export class F75Driver {
   private dongle?: Endpoint;
   private bound = new WeakSet<HIDDevice>();
   private keySeq = 0;
-  private simMode = false;
   private statusListeners = new Set<(s: DriverStatus) => void>();
   private batteryWaiters: ((percent: number | null) => void)[] = [];
   private displayAckCounter = 0;
@@ -234,9 +231,7 @@ export class F75Driver {
   /* -------------------------------- status -------------------------------- */
 
   get status(): DriverStatus {
-    if (this.simMode) return { sim: true, wiredCommand: true, wiredDisplay: true, dongle: true };
     return {
-      sim: false,
       wiredCommand: !!this.wiredCommand,
       wiredDisplay: !!this.wiredDisplay,
       dongle: this.dongleInterfaces.length > 0,
@@ -291,7 +286,6 @@ export class F75Driver {
 
   /** Abre o seletor do navegador (precisa de gesto do usuário). */
   async connectPicker(): Promise<DriverStatus> {
-    if (this.simMode) return this.simConnect();
     if (!navigator.hid) throw new F75Error("WebHID indisponível — use Chrome/Chromium/Edge/Brave (não existe no Firefox).");
     this.attachHidListeners();
 
@@ -315,7 +309,6 @@ export class F75Driver {
 
   /** Rebinding silencioso dos dispositivos já autorizados (sem seletor). */
   async reconnectSaved(silent = false): Promise<DriverStatus> {
-    if (this.simMode) return this.simConnect();
     if (!navigator.hid) throw new F75Error("WebHID indisponível neste navegador.");
     this.attachHidListeners();
     const granted = await navigator.hid.getDevices();
@@ -421,13 +414,6 @@ export class F75Driver {
   }
 
   async disconnect(): Promise<void> {
-    if (this.simMode) {
-      this.simMode = false;
-      f75log.info("🧪 Simulação encerrada.");
-      this.clearRealEndpoints();
-      this.notify();
-      return;
-    }
     const all = [this.wiredCommand, this.wiredDisplay, ...this.dongleInterfaces];
     for (const ep of all) {
       if (ep?.kind === "real") {
@@ -442,28 +428,6 @@ export class F75Driver {
     this.clearRealEndpoints();
     f75log.info("Desconectado (endpoints fechados). Autorização continua salva — use Reconectar.");
     this.notify();
-  }
-
-  /* ------------------------------ modo simulação --------------------------- */
-
-  /** Liga o modo simulação (nenhum hardware é acessado). */
-  async enableSim(): Promise<DriverStatus> {
-    return this.simConnect();
-  }
-
-  private simConnect(): DriverStatus {
-    this.simMode = true;
-    this.wiredCommand = undefined;
-    this.wiredDisplay = undefined;
-    this.dongleInterfaces = [];
-    this.dongle = undefined;
-    f75log.warn("🧪 MODO SIMULAÇÃO ativo — nenhum hardware é acessado. Pacotes são montados de verdade, mas 'enviados' pro nada. Tudo que a UI fizer aparece aqui igual.");
-    this.notify();
-    return this.status;
-  }
-
-  get isSim(): boolean {
-    return this.simMode;
   }
 
   /* ------------------------------ input reports ---------------------------- */
@@ -506,9 +470,6 @@ export class F75Driver {
 
   private waitForInput(ep: Endpoint | undefined, timeoutMs: number): Promise<Uint8Array | null> {
     if (!ep) return Promise.resolve(null);
-    if (this.simMode) {
-      return sleep(Math.min(timeoutMs, 25)).then(() => new Uint8Array([0x01]));
-    }
     if (ep.kind !== "real") return Promise.resolve(null);
     return new Promise((resolve) => {
       let done = false;
@@ -614,7 +575,6 @@ export class F75Driver {
   }
 
   private candidatesFor(role: EndpointRole): Endpoint[] {
-    if (this.simMode) return [];
     if (role === "dongle") return this.dongleInterfaces;
     const ep = role === "wiredCommand" ? this.wiredCommand : this.wiredDisplay;
     return ep ? [ep] : [];
@@ -719,16 +679,6 @@ export class F75Driver {
     modes: WireMode[] = ["output", "feature"],
     dump = true
   ): Promise<void> {
-    if (this.simMode) {
-      f75log.cmd(`TX (sim) · ${label} · ${role === "dongle" ? describeWireless(packet) : describeWired(packet)}`);
-      if (dump) f75log.dump(packet, `TX sim · ${label}`);
-      this.lastTx = {
-        label,
-        attempts: [{ target: "sim", mode: "sim", reportId: "—", wire: `${packet.length}B`, result: "✔ ok (sim)" }],
-      };
-      return;
-    }
-
     // Fast path do receiver: rota já validada por RESPOSTA do teclado (probe).
     // "Aceito pelo SO" não prova processamento — só a sonda prova. Se a rota
     // calibrada deixar de ser aceita pelo SO, limpa e cai na varredura abaixo.
@@ -795,7 +745,6 @@ export class F75Driver {
   }
 
   private async readFeatureAck(label: string): Promise<DataView | null> {
-    if (this.simMode) return null;
     const ep = this.wiredCommand;
     if (!ep) return null;
     const declared = ep.summary.featureIds.map((r) => r.id);
@@ -846,10 +795,6 @@ export class F75Driver {
    *    prefixed — o nativo usa esse caminho como fallback).
    */
   private async writeDisplayChunk(ep: Endpoint | undefined, chunk: Uint8Array, index: number, total: number): Promise<void> {
-    if (this.simMode) {
-      if (index === 1 || index % 64 === 0) f75log.cmd(`TX (sim) · bloco display ${index}/${total} · ${chunk.length}B`);
-      return;
-    }
     if (!ep) throw new F75Error(this.requireMessage("wiredDisplay"));
     const s = ep.summary;
     if (s.maxOutput <= 0 && s.maxFeature <= 0) {
@@ -886,12 +831,10 @@ export class F75Driver {
       throw new F75Error("Slot precisa ser um número entre 1 e 255.");
     }
     if (stream.chunkCount > 0xffff) throw new F75Error("Payload grande demais pros metadados de 16 bits.");
-    if (!this.simMode) {
-      if (!this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
-      if (!this.wiredDisplay) throw new F75Error(this.requireMessage("wiredDisplay"));
-    }
+    if (!this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
+    if (!this.wiredDisplay) throw new F75Error(this.requireMessage("wiredDisplay"));
 
-    const raw = this.simMode ? undefined : this.wiredDisplay!;
+    const raw = this.wiredDisplay;
     const started = performance.now();
     this.displayAckCounter = 0;
 
@@ -967,7 +910,7 @@ export class F75Driver {
     if (!Number.isInteger(slot) || slot < 1 || slot > 255) {
       throw new F75Error("Slot precisa ser um número entre 1 e 255.");
     }
-    if (!this.simMode && !this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
+    if (!this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
 
     f75log.info(`📺 Ativando slot ${slot} da telinha (sem reenviar conteúdo)…`);
     await this.commandExchange(wiredPacket(0x04, 0x18), `slot ${slot} · abrir sessão`);
@@ -994,7 +937,7 @@ export class F75Driver {
    * resetar keymap/lighting. Requer cabo USB-C.
    */
   async eraseDisplayMemory(onStage: (stage: string) => void): Promise<void> {
-    if (!this.simMode && (!this.wiredCommand || !this.wiredDisplay)) {
+    if (!this.wiredCommand || !this.wiredDisplay) {
       throw new F75Error(this.requireMessage("wiredCommand"));
     }
     onStage("Apagando memória de display (todos os slots)");
@@ -1234,7 +1177,7 @@ export class F75Driver {
    * traz a bateria se o teclado estiver acordado.
    */
   private async calibrateDongle(): Promise<void> {
-    if (this.simMode || this.dongleInterfaces.length === 0) return;
+    if (this.dongleInterfaces.length === 0) return;
     try {
       const percent = await this.probeDongleRoutes(false);
       if (percent !== null) this.onBattery?.(percent);
@@ -1249,13 +1192,6 @@ export class F75Driver {
    * resposta de bateria pra validar a rota de TX do receiver).
    */
   async queryBattery(quiet = false): Promise<number | null> {
-    if (this.simMode) {
-      f75log.cmd("TX (sim) · battery query");
-      await sleep(300);
-      f75log.rx("🔋 Bateria via input report: 87% (sim)");
-      this.onBattery?.(87);
-      return 87;
-    }
     if (this.dongleInterfaces.length === 0) throw new F75Error(this.requireMessage("dongle"));
     if (!quiet) f75log.info("🔋 Consultando bateria — a resposta real do teclado valida a rota de TX do receiver.");
     const percent = await this.probeDongleRoutes(!quiet);
@@ -1265,12 +1201,57 @@ export class F75Driver {
 
   /* ---------------------------- receiver: RGB ------------------------------- */
 
+  /**
+   * RGB com escolha automática de transporte: receiver 2.4G quando presente
+   * (rota validada pela sonda), senão a sequência COM FIO do driver nativo
+   * (applyWiredStandardRGB — sessão 04 18 → select 04 13 → payload de lighting
+   * → commit 04 02 → finalizar 04 f0, tudo por feature de 64 B no 0xFF13).
+   */
   async applyRGB(settings: RgbSettings): Promise<void> {
-    f75log.info(`🎨 Aplicando RGB: ${describeWireless(rgbLEDReport(settings)).replace("LED 0x05 · ", "")}`);
-    await this.tx(rgbCommitReport(), "RGB commit", "dongle", ["output", "feature"]);
-    await sleep(50);
-    await this.tx(rgbLEDReport(settings), "RGB LED", "dongle", ["output", "feature"]);
-    f75log.ok("RGB aplicado via receiver 2.4G.");
+    if (this.dongleInterfaces.length > 0) {
+      f75log.info(`🎨 Aplicando RGB via receiver 2.4G: ${describeWireless(rgbLEDReport(settings)).replace("LED 0x05 · ", "")}`);
+      await this.tx(rgbCommitReport(), "RGB commit", "dongle", ["output", "feature"]);
+      await sleep(50);
+      await this.tx(rgbLEDReport(settings), "RGB LED", "dongle", ["output", "feature"]);
+      f75log.ok("RGB aplicado via receiver 2.4G.");
+      return;
+    }
+    if (this.wiredCommand) {
+      f75log.info("🎨 Receiver ausente — aplicando RGB via CABO (sequência wired do nativo, 0xFF13 feature 64B)…");
+      await this.applyWiredRGB(settings);
+      return;
+    }
+    throw new F75Error(this.requireMessage("dongle"));
+  }
+
+  /** RGB pelo cabo — byte a byte igual a applyWiredStandardRGB do nativo. */
+  private async applyWiredRGB(s: RgbSettings): Promise<void> {
+    const mode = Math.min(Math.max(s.mode, 0), 31);
+    await this.commandExchange(wiredPacket(0x04, 0x18), "RGB cabo · abrir sessão");
+    await sleep(40);
+    const select = wiredPacket(0x04, 0x13);
+    select[8] = 0x01;
+    await this.commandExchange(select, "RGB cabo · selecionar bloco de lighting");
+    await sleep(40);
+    const payload = new Uint8Array(AULA.commandLength);
+    payload[0] = mode;
+    if (mode !== 0) {
+      payload[1] = (s.color >> 16) & 0xff;
+      payload[2] = (s.color >> 8) & 0xff;
+      payload[3] = s.color & 0xff;
+      payload[8] = s.colorful ? 1 : 0;
+      payload[9] = Math.min(Math.max(s.brightness, 1), 5);
+      payload[10] = Math.min(Math.max(s.speed, 1), 5);
+      payload[11] = Math.min(Math.max(s.direction, 0), 3);
+    }
+    payload[14] = 0xaa;
+    payload[15] = 0x55;
+    await this.commandExchange(payload, `RGB cabo · payload modo ${mode} ${intToHex(s.color)}`);
+    await sleep(40);
+    await this.commandExchange(wiredPacket(0x04, 0x02), "RGB cabo · commit");
+    await sleep(40);
+    await this.commandExchange(wiredPacket(0x04, 0xf0), "RGB cabo · finalizar");
+    f75log.ok("RGB aplicado via cabo 0xFF13 (applyWiredStandardRGB do nativo).");
   }
 
   /* ------------------------ receiver: performance/jogo ---------------------- */
@@ -1295,8 +1276,20 @@ export class F75Driver {
     f75log.info(
       `⚡ Aplicando: level ${options.level} · sleep ${options.sleep} · game=${options.game ? 1 : 0} altTab=${options.lockAltTab ? 1 : 0} altF4=${options.lockAltF4 ? 1 : 0} win=${options.lockWin ? 1 : 0}`
     );
-    await this.tx(report, "performance + game mode", "dongle", ["output", "feature"]);
-    f75log.ok("Performance e flags de jogo aplicadas via receiver 2.4G.");
+    if (this.dongleInterfaces.length > 0) {
+      await this.tx(report, "performance + game mode", "dongle", ["output", "feature"]);
+      f75log.ok("Performance e flags de jogo aplicadas via receiver 2.4G.");
+      return;
+    }
+    if (this.wiredCommand) {
+      // Fallback com fio do nativo (sendRawCompatibleReport): mesmo report 0x07
+      // padding a 64 B por feature/output no canal 0xFF13.
+      f75log.info("Receiver ausente — performance via CABO (fallback wired do nativo, report 0x07 padded a 64B)…");
+      await this.tx(padTo(report, AULA.commandLength), "performance + game mode (cabo)", "wiredCommand", ["feature", "output"]);
+      f75log.ok("Performance aplicada via cabo 0xFF13.");
+      return;
+    }
+    throw new F75Error(this.requireMessage("dongle"));
   }
 
   /* ------------------------------ diagnóstico ------------------------------- */
@@ -1323,6 +1316,6 @@ export class F75Driver {
     push(this.wiredCommand, "cabo · comando");
     push(this.wiredDisplay, "cabo · display");
     this.dongleInterfaces.forEach((ep, i) => push(ep, i === 0 ? "receiver · preferido" : `receiver · alt ${i}`));
-    return { sim: this.simMode, endpoints, lastTx: this.lastTx, dongleRoute: this.dongleRouteLabel };
+    return { endpoints, lastTx: this.lastTx, dongleRoute: this.dongleRouteLabel };
   }
 }

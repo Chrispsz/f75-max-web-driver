@@ -302,3 +302,24 @@ Stage Summary:
 - Apagar memória de display disponível isolada (remover GIFs sem factory reset)
 - UI enxuta: bloqueios independentes fora; Modo jogo = comportamento nativo de verdade
 - Capacidade total mapeada (resposta ao usuário): cabo = display (slots/clear/relógio) + factory reset; 2.4G = RGB 20 efeitos, perf 1-5, sleep, game/win-lock, bateria; fora do alcance (sem protocolo conhecido): remap por tecla, edição de macros, rate de polling
+
+---
+Task ID: 16
+Agent: Z.ai Code (main)
+Task: Remover Simulação do web driver, criar pack de pixelart 128×128 (ciano/branco/cinza), portar RGB+desempenho VIA CABO (0xFF13) do nativo e responder: menu físico da telinha, cabo vs 2.4G, desinstalação do driver nativo, recursos extras.
+
+Work Log:
+- Re-leu os 7 fontes Swift: descoberta-chave — wireless.swift tem transporte .wiredControl com applyWiredStandardRGB (04 18 → 04 13 [8]=01 → payload [0]=modo [1..3]=RGB [8]=colorful [9]=brilho [10]=vel [11]=dir [14]=AA [15]=55 → 04 02 → 04 f0, feature 64B) e sendRawCompatibleReport (0x07 padded 64B) — o LinuxBackend nativo NÃO tem isso (dongle-only), mas o macOS sim; nosso web driver só fazia dongle
+- driver.ts v6: removido TODO o modo simulação (simMode, enableSim, simConnect, isSim, branches em status/connect/disconnect/waitForInput/tx/writeDisplayChunk/uploadDisplay/activateSlot/erase/queryBattery/diagnostics; DriverStatus.sim e DriverDiagnostics.sim fora); applyRGB/applyPerformance agora escolhem transporte automaticamente: dongle (rota validada) → senão CABO (sequência byte-exata do nativo); fallback com fio do 0x07 usa padTo(report, 64) pra wire ficar idêntica ao sendRawCompatibleReport
+- F75App.tsx: botão Simulação removido, canSend de Iluminação/Desempenho = anyConnected (2.4G OU cabo), descs dinâmicas por transporte, LockedNotes novas, version v6; DisplayPanel: sim prop fora, ready = wiredReady (0xFF68 é só-cabo)
+- SystemPanel.tsx: chip "simulação" → chip "rota ok" (dongleRoute); texto de interfaces vazias atualizado
+- DisplayPanel: bug real corrigido — re-encode com fit novo usava closure velha do fit (buildDisplayStream com valor antigo); agora prepare(file, fitForEncode) recebe o fit explícito
+- NOVO pack de artes: scripts/gen-art.mjs (gifenc, paleta 11 cores arredondada pro espectro EXATO do RGB565 — zero perda no pipeline do firmware) → public/art/: f75-badge.gif (30f/43KB, logo F75 prata com sombra ciano pulsante + sweep + MAX), aurora-ciano.gif (90f/189KB, ondas posterizadas + starfield prata, fases de período inteiro = loop perfeito), pulse-eq.gif (60f/116KB, 14 barras ciano com caps brancos); ffmpeg frame-check visual aprovado
+- DisplayPanel ganhou card "Artes prontas · 128×128 · ciano/branco/cinza" com 3 botões que fazem fetch do GIF e rodam o MESMO pipeline do upload (prepare → RGB565 → slot)
+- Validação: eslint limpo, tsc 0 erros em src/, HTTP 200 nos 3 GIFs; Agent Browser — sem botão Simulação, painéis Tela/Iluminação/Desempenho/Teclas/Sistema ok, Teclas capturou "a" ao vivo, footer 844/844 mobile e grudado no desktop, zero erros de página/console
+
+Stage Summary:
+- Simulação fora — o app agora é 100% hardware-real (como pedido)
+- RGB e Modo jogo/latência/suspensão FUNCIONAM SÓ COM CABO (novo: o web driver passou o nativo Linux nesse aspecto) — resolve exatamente a dor do usuário no modo cabeado
+- Pack de 3 artes na identidade do setup (keycaps branco/cinza + LED #41E8FF), 1 clique pra preparar e enviar pro slot
+- Inventário final de capacidades confirmado contra o código nativo completo: tudo do app macOS coberto + extras (ativar slot, apagar memória de display, console hex, teclas ao vivo, artes procedurais)

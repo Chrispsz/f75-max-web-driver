@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Eraser, Film, Image as ImageIcon, Layers, Loader2, Monitor, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { Clock, Eraser, Image as ImageIcon, Layers, Loader2, Monitor, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,18 +28,23 @@ interface Prepared {
   file: File | null;
 }
 
+/** Pack de artes geradas pra composição branco/cinza + LED ciano (#41E8FF). */
+const READY_ARTS = [
+  { file: "/art/f75-badge.gif", name: "F75 badge", desc: "logo prata + brilho ciano" },
+  { file: "/art/aurora-ciano.gif", name: "Aurora ciano", desc: "ondas gelo em loop" },
+  { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras ciano pulsando" },
+] as const;
+
 export function DisplayPanel({
   driver,
   run,
   busy,
   ready,
-  sim,
 }: {
   driver: F75Driver | null;
   run: (label: string, action: () => Promise<void>) => Promise<void>;
   busy: string | null;
   ready: boolean;
-  sim: boolean;
 }) {
   const [fit, setFit] = useState<FitMode>("contain");
   const [slot, setSlot] = useState("1");
@@ -107,26 +112,30 @@ export function DisplayPanel({
 
   /* ------------------------------ conteúdo ------------------------------ */
 
+  /** Decode + encode RGB565 + prepara estado. fitForEncode explícito evita
+   *  closure velha quando o ajuste muda junto (re-encode on-change). */
+  const prepare = async (file: File, fitForEncode: FitMode) => {
+    f75log.info(`Arquivo: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`);
+    f75log.info("Decodificando e convertendo pra RGB565 128×128…");
+    const frames: DisplayFrame[] = file.type === "image/gif" ? await decodeAnimatedGif(file) : await decodeStillImage(file);
+    const stream = buildDisplayStream(frames, fitForEncode);
+    f75log.ok(
+      `Pronto: ${stream.frameCount} frame(s) · ${stream.chunkCount} blocos de 4 KB · ${(stream.data.length / 1024).toFixed(0)} KB · ${stream.avgFps.toFixed(1)} fps`
+    );
+    setPrepared({ stream, frames, fileName: file.name, file });
+  };
+
   const handleFile = (file: File | null) => {
     if (!file) return;
     setProgress({ sent: 0, total: 0, eta: 0 });
-    f75log.info(`Arquivo: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`);
-    void run("prepare", async () => {
-      f75log.info("Decodificando e convertendo pra RGB565 128×128…");
-      const frames: DisplayFrame[] = file.type === "image/gif" ? await decodeAnimatedGif(file) : await decodeStillImage(file);
-      const stream = buildDisplayStream(frames, fit);
-      f75log.ok(
-        `Pronto: ${stream.frameCount} frame(s) · ${stream.chunkCount} blocos de 4 KB · ${(stream.data.length / 1024).toFixed(0)} KB · ${stream.avgFps.toFixed(1)} fps`
-      );
-      setPrepared({ stream, frames, fileName: file.name, file });
-    });
+    void run("prepare", () => prepare(file, fit));
   };
 
   /** Re-encode com o novo fit (arquivos reais; animações geradas já são 128×128). */
   const reencodeWithFit = (newFit: FitMode) => {
     setFit(newFit);
     const current = preparedRef.current;
-    if (current?.file) handleFile(current.file);
+    if (current?.file) void run("prepare", () => prepare(current.file!, newFit));
   };
 
   const handleGenerate = (kind: "bounce" | "plasma") =>
@@ -135,6 +144,16 @@ export function DisplayPanel({
       const stream = buildDisplayStream(frames, "stretch");
       f75log.ok(`Animação gerada (${kind}): ${stream.frameCount} frames · ${stream.chunkCount} blocos · 15 fps · loop perfeito`);
       setPrepared({ stream, frames, fileName: kind === "bounce" ? "bola-ciano (gerada)" : "plasma-gelo (gerada)", file: null });
+    });
+
+  /** Baixa uma arte do pack (public/art) e roda o mesmo pipeline do upload. */
+  const loadReadyArt = (art: (typeof READY_ARTS)[number]) =>
+    void run("art", async () => {
+      f75log.info(`Arte pronta “${art.name}” — baixando ${art.file}…`);
+      const res = await fetch(art.file);
+      if (!res.ok) throw new Error(`Falha ao baixar ${art.file} (HTTP ${res.status}).`);
+      const file = new File([await res.blob()], `${art.name}.gif`, { type: "image/gif" });
+      await prepare(file, "stretch");
     });
 
   const clearPrepared = () => {
@@ -200,7 +219,7 @@ export function DisplayPanel({
       {!ready && (
         <LockedNote>
           <Monitor className="h-3.5 w-3.5 shrink-0" />
-          Conecte o teclado via cabo USB-C — ou ative a simulação pra explorar.
+          Conecte o teclado via cabo USB-C — display usa o canal 0xFF68 (só existe no cabo).
         </LockedNote>
       )}
 
@@ -241,6 +260,23 @@ export function DisplayPanel({
               <Button onClick={() => handleGenerate("plasma")} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Gerar: plasma gelo
               </Button>
+            </div>
+            <div className="space-y-1.5 border-t border-zinc-800/70 pt-3">
+              <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza</FieldLabel>
+              <div className="grid gap-1.5 sm:grid-cols-3">
+                {READY_ARTS.map((a) => (
+                  <button
+                    key={a.file}
+                    type="button"
+                    disabled={!ready || busy !== null}
+                    onClick={() => loadReadyArt(a)}
+                    className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-2 text-left transition-colors hover:border-emerald-500/50 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <span className="block text-xs font-medium text-zinc-200">{a.name}</span>
+                    <span className="block text-[10px] text-zinc-500">{a.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -383,12 +419,6 @@ export function DisplayPanel({
         </CardContent>
       </Card>
 
-      {sim && (
-        <p className="flex items-center gap-2 text-[11px] text-zinc-600">
-          <Film className="h-3 w-3" />
-          Modo simulação: todo o pipeline de encode roda de verdade, nada é enviado ao hardware.
-        </p>
-      )}
     </section>
   );
 }

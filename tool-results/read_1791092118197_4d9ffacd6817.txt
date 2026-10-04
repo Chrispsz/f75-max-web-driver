@@ -1,0 +1,718 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from "react";
+     4→import {
+     5→  Cable,
+     6→  FlaskConical,
+     7→  Keyboard,
+     8→  Loader2,
+     9→  Monitor,
+    10→  Palette,
+    11→  Plug,
+    12→  PlugZap,
+    13→  RadioTower,
+    14→  RefreshCw,
+    15→  Terminal,
+    16→  TriangleAlert,
+    17→  Usb,
+    18→  Zap,
+    19→} from "lucide-react";
+    20→import type { LucideIcon } from "lucide-react";
+    21→import { Button } from "@/components/ui/button";
+    22→import { Card, CardContent } from "@/components/ui/card";
+    23→import { Label } from "@/components/ui/label";
+    24→import { Slider } from "@/components/ui/slider";
+    25→import { Switch } from "@/components/ui/switch";
+    26→import { BatteryGauge, Chip, FieldLabel, LockedNote, MonoLine, Segmented, SectionHeader } from "./atoms";
+    27→import { DisplayPanel } from "./DisplayPanel";
+    28→import { KeysPanel } from "./KeysPanel";
+    29→import { SystemPanel } from "./SystemPanel";
+    30→import { F75Driver, F75Error, type DriverStatus } from "@/lib/f75/driver";
+    31→import { f75log } from "@/lib/f75/logger";
+    32→import {
+    33→  DIRECTIONS,
+    34→  RESPONSE_LEVELS,
+    35→  RGB_MODES,
+    36→  SLEEP_OPTIONS,
+    37→  hexToInt,
+    38→  intToHex,
+    39→  type RgbSettings,
+    40→} from "@/lib/f75/protocol";
+    41→
+    42→const CYAN = "#41E8FF";
+    43→const UI_KEY = "f75.webdriver.v1";
+    44→
+    45→type SectionId = "device" | "lighting" | "performance" | "display" | "keys" | "system";
+    46→
+    47→const SECTIONS: { id: SectionId; label: string; icon: LucideIcon; hint: string }[] = [
+    48→  { id: "device", label: "Dispositivo", icon: Usb, hint: "Conexão, interfaces e estado do teclado" },
+    49→  { id: "lighting", label: "Iluminação", icon: Palette, hint: "Efeitos, cor, brilho e velocidade" },
+    50→  { id: "performance", label: "Desempenho", icon: Zap, hint: "Latência, suspensão e modo jogo" },
+    51→  { id: "display", label: "Tela", icon: Monitor, hint: "GIFs, imagens e relógio do display" },
+    52→  { id: "keys", label: "Teclas", icon: Keyboard, hint: "Teste de teclas em tempo real" },
+    53→  { id: "system", label: "Sistema", icon: Terminal, hint: "Diagnóstico e console de pacotes" },
+    54→];
+    55→
+    56→export interface PerfState {
+    57→  level: number;
+    58→  sleep: number;
+    59→  game: boolean;
+    60→}
+    61→
+    62→type Run = (label: string, action: () => Promise<void>) => Promise<void>;
+    63→
+    64→const COLOR_PRESETS = [
+    65→  { hex: "#41E8FF", name: "Ciano gelo" },
+    66→  { hex: "#FFFFFF", name: "Branco" },
+    67→  { hex: "#FF3B30", name: "Vermelho" },
+    68→  { hex: "#FF9500", name: "Laranja" },
+    69→  { hex: "#FFD60A", name: "Amarelo" },
+    70→  { hex: "#30D158", name: "Verde" },
+    71→  { hex: "#BF5AF2", name: "Roxo" },
+    72→  { hex: "#FF375F", name: "Rosa" },
+    73→];
+    74→
+    75→export default function F75App() {
+    76→  const driverRef = useRef<F75Driver | null>(null);
+    77→  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    78→
+    79→  const [section, setSection] = useState<SectionId>("device");
+    80→  const [supported, setSupported] = useState<boolean | null>(null);
+    81→  const [inIframe, setInIframe] = useState(false);
+    82→  const [driverReady, setDriverReady] = useState(false);
+    83→  const [status, setStatus] = useState<DriverStatus>({ sim: false, wiredCommand: false, wiredDisplay: false, dongle: false });
+    84→  const [busy, setBusy] = useState<string | null>(null);
+    85→  const [battery, setBattery] = useState<number | null>(null);
+    86→  const [routeLabel, setRouteLabel] = useState<string | null>(null);
+    87→
+    88→  const [rgb, setRgbState] = useState<RgbSettings>({ mode: 1, brightness: 3, speed: 2, direction: 0, colorful: false, color: hexToInt(CYAN) });
+    89→  const [perf, setPerfState] = useState<PerfState>({ level: 2, sleep: 2, game: false });
+    90→  const [resetArmed, setResetArmed] = useState(false);
+    91→
+    92→  const setRgb = useCallback((patch: Partial<RgbSettings>) => setRgbState((prev) => ({ ...prev, ...patch })), []);
+    93→  const setPerf = useCallback((patch: Partial<PerfState>) => setPerfState((prev) => ({ ...prev, ...patch })), []);
+    94→
+    95→  /* ------------------------------- bootstrap ------------------------------- */
+    96→
+    97→  useEffect(() => {
+    98→    try {
+    99→      const raw = localStorage.getItem(UI_KEY);
+   100→      if (raw) {
+   101→        const saved = JSON.parse(raw) as { section?: SectionId; rgb?: Partial<RgbSettings>; perf?: Partial<PerfState> };
+   102→        if (saved.section && SECTIONS.some((s) => s.id === saved.section)) setSection(saved.section);
+   103→        if (saved.rgb) setRgbState((prev) => ({ ...prev, ...saved.rgb }));
+   104→        if (saved.perf) setPerfState((prev) => ({ ...prev, ...saved.perf }));
+   105→      }
+   106→    } catch {
+   107→      /* primeira execução */
+   108→    }
+   109→
+   110→    const driver = new F75Driver();
+   111→    driverRef.current = driver;
+   112→    setDriverReady(true);
+   113→    driver.onStatus = (s) => setStatus(s);
+   114→    driver.onBattery = (p) => setBattery(p);
+   115→    setSupported(F75Driver.supported);
+   116→    try {
+   117→      setInIframe(window.self !== window.top);
+   118→    } catch {
+   119→      setInIframe(true);
+   120→    }
+   121→    f75log.info("F75 Max Web Driver v5 pronto — protocolo nativo portado, slots de display e rota validada por sonda. 100% local. Console espelhado aqui e no F12 (filtro [F75]).");
+   122→    driver
+   123→      .reconnectSaved(true)
+   124→      .then((s) => {
+   125→        if (s.wiredCommand || s.wiredDisplay || s.dongle) f75log.ok("Dispositivos já autorizados rebinados automaticamente.");
+   126→      })
+   127→      .catch(() => undefined);
+   128→    return () => {
+   129→      driver.onStatus = null;
+   130→      driver.onBattery = null;
+   131→    };
+   132→  }, []);
+   133→
+   134→  useEffect(() => {
+   135→    try {
+   136→      localStorage.setItem(UI_KEY, JSON.stringify({ section, rgb, perf }));
+   137→    } catch {
+   138→      /* storage cheio/bloqueado — segue sem persistir */
+   139→    }
+   140→  }, [section, rgb, perf]);
+   141→
+   142→  const run = useCallback(
+   143→    async (label: string, action: () => Promise<void>) => {
+   144→      if (busy) return;
+   145→      setBusy(label);
+   146→      try {
+   147→        await action();
+   148→      } catch (err) {
+   149→        const message = err instanceof F75Error ? err.message : err instanceof Error ? err.message : String(err);
+   150→        f75log.err(`✗ ${label}: ${message}`);
+   151→      } finally {
+   152→        setBusy(null);
+   153→      }
+   154→    },
+   155→    [busy]
+   156→  );
+   157→
+   158→  /* --------------------------------- ações --------------------------------- */
+   159→
+   160→  const connect = () =>
+   161→    void run("connect", async () => {
+   162→      const s = await driverRef.current!.connectPicker();
+   163→      if (s.dongle) await driverRef.current!.queryBattery(true).catch(() => undefined);
+   164→      setRouteLabel(driverRef.current!.dongleRouteLabel);
+   165→    });
+   166→
+   167→  const reconnect = () =>
+   168→    void run("reconnect", async () => {
+   169→      const s = await driverRef.current!.reconnectSaved(false);
+   170→      if (s.dongle) await driverRef.current!.queryBattery(true).catch(() => undefined);
+   171→      setRouteLabel(driverRef.current!.dongleRouteLabel);
+   172→    });
+   173→
+   174→  const probeDongle = () =>
+   175→    void run("probe", async () => {
+   176→      await driverRef.current!.queryBattery(false);
+   177→      setRouteLabel(driverRef.current!.dongleRouteLabel);
+   178→    });
+   179→
+   180→  const disconnect = () =>
+   181→    void run("disconnect", async () => {
+   182→      setBattery(null);
+   183→      await driverRef.current!.disconnect();
+   184→    });
+   185→
+   186→  const toggleSim = () =>
+   187→    void run("sim", async () => {
+   188→      setBattery(null);
+   189→      if (driverRef.current!.isSim) await driverRef.current!.disconnect();
+   190→      else await driverRef.current!.enableSim();
+   191→    });
+   192→
+   193→  const applyRgb = () => void run("rgb", () => driverRef.current!.applyRGB(rgb));
+   194→
+   195→  const applyPerf = () =>
+   196→    void run("perf", () => {
+   197→      const game = perf.game;
+   198→      // Semântica do firmware nativo (setGameMode): game mode liga as quatro
+   199→      // flags JUNTAS — Alt+Tab/Alt+F4 o firmware ignora, Win lock é o que
+   200→      // produz efeito visível (tecla Win morre + LED branco fixo).
+   201→      return driverRef.current!.applyPerformance({
+   202→        level: perf.level,
+   203→        sleep: perf.sleep,
+   204→        game,
+   205→        lockAltTab: game,
+   206→        lockAltF4: game,
+   207→        lockWin: game,
+   208→      });
+   209→    });
+   210→
+   211→  const factoryReset = () => {
+   212→    if (!resetArmed) {
+   213→      setResetArmed(true);
+   214→      if (resetTimer.current) clearTimeout(resetTimer.current);
+   215→      resetTimer.current = setTimeout(() => setResetArmed(false), 6000);
+   216→      return;
+   217→    }
+   218→    if (resetTimer.current) clearTimeout(resetTimer.current);
+   219→    setResetArmed(false);
+   220→    void run("reset", async () => {
+   221→      await driverRef.current!.factoryReset((stage) => f75log.info(`· ${stage}`));
+   222→    });
+   223→  };
+   224→
+   225→  const syncClock = () => void run("clock", () => driverRef.current!.syncClock());
+   226→
+   227→  /* --------------------------------- estado -------------------------------- */
+   228→
+   229→  const wiredReady = status.wiredCommand && status.wiredDisplay;
+   230→  const anyConnected = status.sim || status.wiredCommand || status.wiredDisplay || status.dongle;
+   231→  const wirelessReady = status.sim || status.dongle;
+   232→
+   233→  const connectionLabel = status.sim
+   234→    ? "Simulação"
+   235→    : status.dongle && wiredReady
+   236→      ? "2.4G + Cabo"
+   237→      : status.dongle
+   238→        ? "Receiver 2.4G"
+   239→        : wiredReady
+   240→          ? "Cabo USB-C"
+   241→          : anyConnected
+   242→            ? "Parcial"
+   243→            : "Desconectado";
+   244→
+   245→  return (
+   246→    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30">
+   247→      {/* ------------------------------- topbar ------------------------------- */}
+   248→      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-800/80 px-4 sm:px-5">
+   249→        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10">
+   250→          <Keyboard className="h-4 w-4 text-emerald-400" />
+   251→        </span>
+   252→        <div className="min-w-0">
+   253→          <h1 className="truncate text-sm font-bold leading-tight">
+   254→            F75 Max <span className="text-emerald-400">Web Driver</span>
+   255→          </h1>
+   256→          <p className="truncate text-[10px] leading-tight text-zinc-500">protocolo nativo portado · 100% local no navegador</p>
+   257→        </div>
+   258→
+   259→        <div className="ml-auto flex items-center gap-2">
+   260→          {status.dongle && !status.sim && (
+   261→            <Chip ok={true} title="Bateria do teclado via receiver">
+   262→              <BatteryGauge percent={battery} />
+   263→            </Chip>
+   264→          )}
+   265→          <Chip ok={anyConnected} title="Estado da conexão">
+   266→            <span className={`h-1.5 w-1.5 rounded-full ${anyConnected ? "bg-emerald-400" : "bg-zinc-600"}`} />
+   267→            {connectionLabel}
+   268→          </Chip>
+   269→        </div>
+   270→      </header>
+   271→
+   272→      <div className="flex min-h-0 flex-1">
+   273→        {/* ------------------------------ sidebar ------------------------------ */}
+   274→        <aside className="hidden w-56 shrink-0 flex-col justify-between border-r border-zinc-800/80 p-3 md:flex">
+   275→          <nav aria-label="Seções do driver" className="space-y-1">
+   276→            {SECTIONS.map((s) => (
+   277→              <button
+   278→                key={s.id}
+   279→                type="button"
+   280→                onClick={() => setSection(s.id)}
+   281→                aria-current={section === s.id ? "page" : undefined}
+   282→                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+   283→                  section === s.id
+   284→                    ? "bg-emerald-500/10 font-semibold text-emerald-300"
+   285→                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+   286→                }`}
+   287→              >
+   288→                <s.icon className="h-4 w-4 shrink-0" />
+   289→                {s.label}
+   290→              </button>
+   291→            ))}
+   292→          </nav>
+   293→          <div className="space-y-2 px-1">
+   294→            <div className="flex flex-wrap gap-1.5">
+   295→              <Chip ok={supported === true} title={supported ? "WebHID disponível" : "Use Chrome/Chromium/Edge/Brave"}>
+   296→                WebHID
+   297→              </Chip>
+   298→              <Chip title="Nenhuma telemetria — nada sai da máquina">100% local</Chip>
+   299→            </div>
+   300→            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v5 · slots de display + rota do receiver validada por sonda</p>
+   301→          </div>
+   302→        </aside>
+   303→
+   304→        {/* --------------------------- conteúdo ------------------------------ */}
+   305→        <div className="flex min-w-0 flex-1 flex-col">
+   306→          <nav aria-label="Seções do driver" className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-800/80 px-3 py-2 md:hidden">
+   307→            {SECTIONS.map((s) => (
+   308→              <button
+   309→                key={s.id}
+   310→                type="button"
+   311→                onClick={() => setSection(s.id)}
+   312→                aria-current={section === s.id ? "page" : undefined}
+   313→                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+   314→                  section === s.id
+   315→                    ? "border-emerald-500/50 bg-emerald-500/10 font-semibold text-emerald-300"
+   316→                    : "border-zinc-800 bg-zinc-900/60 text-zinc-400"
+   317→                }`}
+   318→              >
+   319→                <s.icon className="h-3.5 w-3.5" />
+   320→                {s.label}
+   321→              </button>
+   322→            ))}
+   323→          </nav>
+   324→
+   325→          <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+   326→            <div className="mx-auto max-w-3xl space-y-5">
+   327→              {supported === false && (
+   328→                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs leading-relaxed text-amber-100/90">
+   329→                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+   330→                  <span>
+   331→                    <strong className="text-amber-300">WebHID indisponível.</strong> Use Chrome, Chromium, Edge, Brave ou Opera — ou explore com o
+   332→                    modo simulação.
+   333→                  </span>
+   334→                </div>
+   335→              )}
+   336→              {supported && inIframe && (
+   337→                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/80">
+   338→                  <Cable className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+   339→                  <span>
+   340→                    Rodando em iframe: se o seletor de dispositivos não abrir, use <strong>Open in New Tab</strong> acima do preview.
+   341→                  </span>
+   342→                </div>
+   343→              )}
+   344→
+   345→              {section === "device" && (
+   346→                <DevicePanel
+   347→                  supported={supported}
+   348→                  status={status}
+   349→                  anyConnected={anyConnected}
+   350→                  wiredReady={wiredReady}
+   351→                  busy={busy}
+   352→                  battery={battery}
+   353→                  driverReady={driverReady}
+   354→                  resetArmed={resetArmed}
+   355→                  routeLabel={routeLabel}
+   356→                  onConnect={connect}
+   357→                  onReconnect={reconnect}
+   358→                  onDisconnect={disconnect}
+   359→                  onToggleSim={toggleSim}
+   360→                  onProbe={probeDongle}
+   361→                  onFactoryReset={factoryReset}
+   362→                />
+   363→              )}
+   364→
+   365→              {section === "lighting" && (
+   366→                <LightingPanel rgb={rgb} setRgb={setRgb} canSend={wirelessReady} busy={busy} onApply={applyRgb} />
+   367→              )}
+   368→
+   369→              {section === "performance" && <PerformancePanel perf={perf} setPerf={setPerf} canSend={wirelessReady} busy={busy} onApply={applyPerf} />}
+   370→
+   371→              {section === "display" && (
+   372→                <DisplayPanel driver={driverReady ? driverRef.current : null} run={run} busy={busy} ready={status.sim || wiredReady} sim={status.sim} />
+   373→              )}
+   374→
+   375→              {section === "keys" && <KeysPanel active={section === "keys"} />}
+   376→
+   377→              {section === "system" && <SystemPanel driver={driverReady ? driverRef.current : null} />}
+   378→            </div>
+   379→          </main>
+   380→        </div>
+   381→      </div>
+   382→
+   383→      {/* ----------------------------- status bar ----------------------------- */}
+   384→      <footer className="shrink-0 border-t border-zinc-800/80 bg-zinc-950">
+   385→        <div className="scrollbar-thin flex items-center gap-2 overflow-x-auto px-4 py-2 text-[11px] text-zinc-500 sm:px-5">
+   386→          <Chip ok={status.wiredCommand} title="Cabo USB-C · canal de comando 0xFF13">cabo·cmd</Chip>
+   387→          <Chip ok={status.wiredDisplay} title="Cabo USB-C · canal de display 0xFF68">cabo·disp</Chip>
+   388→          <Chip ok={status.dongle} title="Receiver 2.4G · canais 0xFF59/0xFF60">2.4G</Chip>
+   389→          {status.sim && (
+   390→            <Chip ok={true} title="Modo simulação ativo">
+   391→              sim
+   392→            </Chip>
+   393→          )}
+   394→          <span className="ml-auto hidden shrink-0 items-center gap-1 font-mono text-[10px] text-zinc-600 sm:flex">
+   395→            <Cable className="h-3 w-3" /> 0xFF13 · 0xFF68 · 0xFF60
+   396→          </span>
+   397→        </div>
+   398→      </footer>
+   399→    </div>
+   400→  );
+   401→}
+   402→
+   403→/* ============================== dispositivo ================================ */
+   404→
+   405→function DevicePanel(props: {
+   406→  supported: boolean | null;
+   407→  status: DriverStatus;
+   408→  anyConnected: boolean;
+   409→  wiredReady: boolean;
+   410→  busy: string | null;
+   411→  battery: number | null;
+   412→  driverReady: boolean;
+   413→  resetArmed: boolean;
+   414→  routeLabel: string | null;
+   415→  onConnect: () => void;
+   416→  onReconnect: () => void;
+   417→  onDisconnect: () => void;
+   418→  onToggleSim: () => void;
+   419→  onProbe: () => void;
+   420→  onFactoryReset: () => void;
+   421→}) {
+   422→  const { supported, status, anyConnected, wiredReady, busy, battery, driverReady, resetArmed, routeLabel } = props;
+   423→
+   424→  return (
+   425→    <section className="space-y-5" aria-label="Dispositivo">
+   426→      <SectionHeader icon={Usb} title="Dispositivo" desc="Conexão e estado do hardware" />
+   427→
+   428→      <Card className="border-zinc-800 bg-zinc-900/50">
+   429→        <CardContent className="space-y-4 p-4 sm:p-5">
+   430→          <div className="flex flex-wrap items-center gap-2">
+   431→            <Chip ok={status.wiredCommand}>cabo · comando 0xFF13</Chip>
+   432→            <Chip ok={status.wiredDisplay}>cabo · display 0xFF68</Chip>
+   433→            <Chip ok={status.dongle}>receiver 2.4G</Chip>
+   434→            {status.dongle && !status.sim && (
+   435→              <Chip ok={battery !== null}>
+   436→                <BatteryGauge percent={battery} />
+   437→              </Chip>
+   438→            )}
+   439→          </div>
+   440→
+   441→          {status.dongle && !status.sim && (
+   442→            <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+   443→              <div className="flex items-center justify-between gap-2">
+   444→                <p className="text-xs font-semibold text-zinc-300">Rota de comando do receiver</p>
+   445→                <Button
+   446→                  onClick={props.onProbe}
+   447→                  disabled={anyBusy(busy)}
+   448→                  variant="outline"
+   449→                  className="h-7 border-zinc-700 px-2.5 text-[11px] text-zinc-300 hover:bg-zinc-800"
+   450→                >
+   451→                  {busy === "probe" ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <RadioTower className="mr-1.5 h-3 w-3" />}
+   452→                  Sondar rotas
+   453→                </Button>
+   454→              </div>
+   455→              <p className={`font-mono text-[10px] leading-relaxed ${routeLabel ? "text-emerald-400" : "text-zinc-500"}`}>
+   456→                {routeLabel ?? "não validada — a sonda envia a query de bateria por cada rota candidata; a resposta real do teclado escolhe a rota usada por RGB, desempenho e bateria"}
+   457→              </p>
+   458→            </div>
+   459→          )}
+   460→
+   461→          <p className="text-xs leading-relaxed text-zinc-500">
+   462→            No seletor, marque <strong className="text-zinc-300">todas</strong> as entradas “Aula F75 Max” e “Aula F75 Max 2.4G”.
+   463→          </p>
+   464→
+   465→          <div className="flex flex-wrap gap-2">
+   466→            <Button onClick={props.onConnect} disabled={anyBusy(busy) || status.sim} className="h-9 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
+   467→              {busy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plug className="mr-2 h-4 w-4" />}
+   468→              Conectar
+   469→            </Button>
+   470→            <Button onClick={props.onReconnect} disabled={anyBusy(busy) || status.sim} variant="outline" className="h-9 border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
+   471→              {busy === "reconnect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+   472→              Reconectar
+   473→            </Button>
+   474→            {anyConnected && (
+   475→              <Button onClick={props.onDisconnect} disabled={anyBusy(busy)} variant="outline" className="h-9 border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
+   476→                <PlugZap className="mr-2 h-4 w-4" /> Desconectar
+   477→              </Button>
+   478→            )}
+   479→            <Button
+   480→              onClick={props.onToggleSim}
+   481→              disabled={anyBusy(busy)}
+   482→              variant="outline"
+   483→              className={`h-9 gap-1.5 ${status.sim ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" : "border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800"}`}
+   484→            >
+   485→              <FlaskConical className="h-4 w-4" />
+   486→              Simulação
+   487→            </Button>
+   488→          </div>
+   489→        </CardContent>
+   490→      </Card>
+   491→
+   492→      <Card className="border-rose-500/20 bg-rose-500/[0.03]">
+   493→        <CardContent className="space-y-3 p-4 sm:p-5">
+   494→          <div className="flex items-center gap-2">
+   495→            <TriangleAlert className="h-4 w-4 text-rose-400" />
+   496→            <p className="text-sm font-semibold">Restauração de fábrica</p>
+   497→          </div>
+   498→          <p className="text-xs leading-relaxed text-zinc-500">
+   499→            Apaga display, keymap, macros e lighting. Requer cabo USB-C. Dois cliques pra confirmar.
+   500→          </p>
+   501→          <Button
+   502→            onClick={props.onFactoryReset}
+   503→            disabled={anyBusy(busy) || !(status.sim || wiredReady)}
+   504→            variant="outline"
+   505→            className={`h-9 ${
+   506→              resetArmed ? "border-rose-500 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25" : "border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800"
+   507→            }`}
+   508→          >
+   509→            {busy === "reset" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+   510→            {resetArmed ? "Confirmar reset" : "Restaurar agora"}
+   511→          </Button>
+   512→        </CardContent>
+   513→      </Card>
+   514→    </section>
+   515→  );
+   516→}
+   517→
+   518→function anyBusy(busy: string | null): boolean {
+   519→  return busy !== null;
+   520→}
+   521→
+   522→/* =============================== iluminação ================================ */
+   523→
+   524→function LightingPanel(props: {
+   525→  rgb: RgbSettings;
+   526→  setRgb: (patch: Partial<RgbSettings>) => void;
+   527→  canSend: boolean;
+   528→  busy: string | null;
+   529→  onApply: () => void;
+   530→}) {
+   531→  const { rgb, setRgb, canSend, busy } = props;
+   532→  const modeName = RGB_MODES.find((m) => m.id === rgb.mode)?.name ?? `modo ${rgb.mode}`;
+   533→
+   534→  return (
+   535→    <section className="space-y-5" aria-label="Iluminação">
+   536→      <SectionHeader
+   537→        icon={Palette}
+   538→        title="Iluminação"
+   539→        desc="Aplicada via receiver 2.4G"
+   540→        right={
+   541→          <MonoLine>
+   542→            {`0x05 · ${modeName} · ${intToHex(rgb.color)} · b${rgb.brightness} v${rgb.speed} ${DIRECTIONS[rgb.direction]}${rgb.colorful ? " · colorful" : ""}`}
+   543→          </MonoLine>
+   544→        }
+   545→      />
+   546→
+   547→      {!canSend && (
+   548→        <LockedNote>
+   549→          <Plug className="h-3.5 w-3.5 shrink-0" />
+   550→          Conecte o receiver 2.4G — ou ative a simulação pra explorar.
+   551→        </LockedNote>
+   552→      )}
+   553→
+   554→      <Card className="border-zinc-800 bg-zinc-900/50">
+   555→        <CardContent className="space-y-5 p-4 sm:p-5">
+   556→          <div className="space-y-2">
+   557→            <FieldLabel>Efeito</FieldLabel>
+   558→            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+   559→              {RGB_MODES.map((m) => (
+   560→                <button
+   561→                  key={m.id}
+   562→                  type="button"
+   563→                  disabled={!canSend}
+   564→                  onClick={() => setRgb({ mode: m.id })}
+   565→                  className={`min-h-[36px] rounded-md border px-2 py-1.5 text-xs transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+   566→                    rgb.mode === m.id
+   567→                      ? "border-emerald-500/60 bg-emerald-500/15 font-semibold text-emerald-300"
+   568→                      : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+   569→                  }`}
+   570→                >
+   571→                  {m.name}
+   572→                </button>
+   573→              ))}
+   574→            </div>
+   575→          </div>
+   576→
+   577→          <div className="space-y-2">
+   578→            <FieldLabel>Cor fixa</FieldLabel>
+   579→            <div className="flex flex-wrap items-center gap-1.5">
+   580→              {COLOR_PRESETS.map((c) => (
+   581→                <button
+   582→                  key={c.hex}
+   583→                  type="button"
+   584→                  title={c.name}
+   585→                  disabled={!canSend}
+   586→                  onClick={() => setRgb({ color: hexToInt(c.hex) })}
+   587→                  className={`h-8 w-8 rounded-lg border-2 transition-transform disabled:cursor-not-allowed disabled:opacity-40 ${
+   588→                    rgb.color === hexToInt(c.hex) ? "scale-110 border-emerald-400" : "border-zinc-700 hover:scale-105"
+   589→                  }`}
+   590→                  style={{ backgroundColor: c.hex }}
+   591→                  aria-label={`Cor ${c.name} ${c.hex}`}
+   592→                />
+   593→              ))}
+   594→              <Label
+   595→                className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/60 px-2 text-[11px] text-zinc-400 hover:border-zinc-600 ${!canSend ? "pointer-events-none opacity-40" : ""}`}
+   596→                title="Cor personalizada"
+   597→              >
+   598→                <input
+   599→                  type="color"
+   600→                  value={intToHex(rgb.color)}
+   601→                  disabled={!canSend}
+   602→                  onChange={(e) => setRgb({ color: hexToInt(e.target.value) })}
+   603→                  className="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
+   604→                  aria-label="Cor personalizada"
+   605→                />
+   606→                custom
+   607→              </Label>
+   608→            </div>
+   609→          </div>
+   610→
+   611→          <div className="grid gap-4 sm:grid-cols-2">
+   612→            <div className="space-y-2">
+   613→              <div className="flex items-center justify-between">
+   614→                <FieldLabel>Brilho</FieldLabel>
+   615→                <span className="font-mono text-[11px] text-emerald-400">{rgb.brightness}/5</span>
+   616→              </div>
+   617→              <Slider value={[rgb.brightness]} min={1} max={5} step={1} disabled={!canSend} onValueChange={([v]) => setRgb({ brightness: v })} aria-label="Brilho" />
+   618→            </div>
+   619→            <div className="space-y-2">
+   620→              <div className="flex items-center justify-between">
+   621→                <FieldLabel>Velocidade</FieldLabel>
+   622→                <span className="font-mono text-[11px] text-emerald-400">{rgb.speed}/5</span>
+   623→              </div>
+   624→              <Slider value={[rgb.speed]} min={1} max={5} step={1} disabled={!canSend} onValueChange={([v]) => setRgb({ speed: v })} aria-label="Velocidade" />
+   625→            </div>
+   626→          </div>
+   627→
+   628→          <div className="grid gap-4 sm:grid-cols-2">
+   629→            <div className="space-y-2">
+   630→              <FieldLabel>Direção</FieldLabel>
+   631→              <Segmented
+   632→                disabled={!canSend}
+   633→                value={rgb.direction}
+   634→                onChange={(v) => setRgb({ direction: v })}
+   635→                options={DIRECTIONS.map((d, i) => ({ value: i, label: d }))}
+   636→              />
+   637→            </div>
+   638→            <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
+   639→              <div>
+   640→                <p className="text-xs font-semibold">Colorful</p>
+   641→                <p className="text-[11px] text-zinc-500">arco-íris independente da cor</p>
+   642→              </div>
+   643→              <Switch checked={rgb.colorful} disabled={!canSend} onCheckedChange={(v) => setRgb({ colorful: v })} aria-label="Colorful" />
+   644→            </div>
+   645→          </div>
+   646→
+   647→          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 w-full bg-emerald-500 text-zinc-950 hover:bg-emerald-400 sm:w-auto">
+   648→            {busy === "rgb" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Palette className="mr-2 h-4 w-4" />}
+   649→            Aplicar iluminação
+   650→          </Button>
+   651→        </CardContent>
+   652→      </Card>
+   653→    </section>
+   654→  );
+   655→}
+   656→
+   657→/* =============================== desempenho ================================ */
+   658→
+   659→function PerformancePanel(props: {
+   660→  perf: PerfState;
+   661→  setPerf: (patch: Partial<PerfState>) => void;
+   662→  canSend: boolean;
+   663→  busy: string | null;
+   664→  onApply: () => void;
+   665→}) {
+   666→  const { perf, setPerf, canSend, busy } = props;
+   667→
+   668→  return (
+   669→    <section className="space-y-5" aria-label="Desempenho">
+   670→      <SectionHeader
+   671→        icon={Zap}
+   672→        title="Desempenho"
+   673→        desc="Latência, suspensão e modo jogo"
+   674→        right={<MonoLine>{`0x07 · lvl ${perf.level} · sleep ${perf.sleep} · jogo=${perf.game ? 1 : 0} · winLock=${perf.game ? 1 : 0}`}</MonoLine>}
+   675→      />
+   676→
+   677→      {!canSend && (
+   678→        <LockedNote>
+   679→          <Plug className="h-3.5 w-3.5 shrink-0" />
+   680→          Conecte o receiver 2.4G — ou ative a simulação pra explorar.
+   681→        </LockedNote>
+   682→      )}
+   683→
+   684→      <Card className="border-zinc-800 bg-zinc-900/50">
+   685→        <CardContent className="space-y-5 p-4 sm:p-5">
+   686→          <div className="space-y-2">
+   687→            <FieldLabel>Latência (polling)</FieldLabel>
+   688→            <Segmented
+   689→              disabled={!canSend}
+   690→              value={perf.level}
+   691→              onChange={(v) => setPerf({ level: v })}
+   692→              options={RESPONSE_LEVELS.map((r) => ({ value: r.id, label: `N${r.id} · ${r.name.split("·")[1].trim().split(" ")[0]}`, title: r.name }))}
+   693→            />
+   694→          </div>
+   695→
+   696→          <div className="space-y-2">
+   697→            <FieldLabel>Suspensão automática</FieldLabel>
+   698→            <Segmented disabled={!canSend} value={perf.sleep} onChange={(v) => setPerf({ sleep: v })} options={SLEEP_OPTIONS.map((s) => ({ value: s.id, label: s.name }))} />
+   699→          </div>
+   700→
+   701→          <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
+   702→            <div>
+   703→              <p className="text-xs font-semibold">Modo jogo</p>
+   704→              <p className="text-[11px] text-zinc-500">trava a tecla Win (LED branco fixo) — comportamento do firmware</p>
+   705→            </div>
+   706→            <Switch checked={perf.game} disabled={!canSend} onCheckedChange={(v) => setPerf({ game: v })} aria-label="Modo jogo" />
+   707→          </div>
+   708→
+   709→          <Button onClick={props.onApply} disabled={!canSend || busy !== null} className="h-10 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
+   710→            {busy === "perf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+   711→            Aplicar
+   712→          </Button>
+   713→        </CardContent>
+   714→      </Card>
+   715→    </section>
+   716→  );
+   717→}
+   718→

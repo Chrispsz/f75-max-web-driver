@@ -99,7 +99,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <FieldLabel>Interfaces abertas</FieldLabel>
-            {diag?.sim && <Chip ok={true}>simulação</Chip>}
+            {diag?.dongleRoute && <Chip ok={true} title="Rota validada por resposta do teclado">rota ok</Chip>}
           </div>
 
           {diag && diag.endpoints.length > 0 ? (
@@ -143,7 +143,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
               )}
             </div>
           ) : (
-            <p className="font-mono text-[11px] text-zinc-600">{diag?.sim ? "simulação — sem hardware" : "nenhuma interface aberta"}</p>
+            <p className="font-mono text-[11px] text-zinc-600">nenhuma interface aberta — conecte o teclado/receiver</p>
           )}
 
           {diag?.lastTx && diag.lastTx.attempts.length > 0 && (
