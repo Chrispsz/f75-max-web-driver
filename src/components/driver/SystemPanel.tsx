@@ -95,7 +95,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
       <SectionHeader icon={Terminal} title="Sistema" desc="Diagnóstico do driver e console de pacotes" />
 
       {/* --------------------------- diagnóstico --------------------------- */}
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <FieldLabel>Interfaces abertas</FieldLabel>
@@ -172,7 +172,7 @@ export function SystemPanel({ driver }: { driver: F75Driver | null }) {
       </Card>
 
       {/* ----------------------------- console ----------------------------- */}
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 sm:min-w-[200px]">

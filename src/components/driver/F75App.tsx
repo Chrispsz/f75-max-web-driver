@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
   Cable,
   Keyboard,
@@ -230,9 +231,14 @@ export default function F75App() {
           : "Desconectado";
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30">
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30">
+      {/* luz ambiente — wash esmeralda no topo, assinatura dark-mode Linear */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(16,185,129,0.07),transparent_70%)]"
+      />
       {/* ------------------------------- topbar ------------------------------- */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-800/80 px-4 sm:px-5">
+      <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-800/80 px-4 sm:px-5">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10">
           <Keyboard className="h-4 w-4 text-emerald-400" />
         </span>
@@ -256,7 +262,7 @@ export default function F75App() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative z-10 flex min-h-0 flex-1">
         {/* ------------------------------ sidebar ------------------------------ */}
         <aside className="hidden w-56 shrink-0 flex-col justify-between border-r border-zinc-800/80 p-3 md:flex">
           <nav aria-label="Seções do driver" className="space-y-1">
@@ -266,12 +272,13 @@ export default function F75App() {
                 type="button"
                 onClick={() => setSection(s.id)}
                 aria-current={section === s.id ? "page" : undefined}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   section === s.id
-                    ? "bg-emerald-500/10 font-semibold text-emerald-300"
+                    ? "bg-emerald-500/[0.09] font-semibold text-emerald-300"
                     : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                 }`}
               >
+                {section === s.id && <span aria-hidden="true" className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-emerald-400" />}
                 <s.icon className="h-4 w-4 shrink-0" />
                 {s.label}
               </button>
@@ -284,7 +291,13 @@ export default function F75App() {
               </Chip>
               <Chip title="Nenhuma telemetria — nada sai da máquina">100% local</Chip>
             </div>
-            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v8 · telinha enxuta · display 1 transferência/bloco · RGB/perf 2.4G ou cabo</p>
+            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">
+              v8 · telinha enxuta
+              <br />
+              display 1 transfer/bloco
+              <br />
+              RGB/perf 2.4G ou cabo
+            </p>
           </div>
         </aside>
 
@@ -310,7 +323,13 @@ export default function F75App() {
           </nav>
 
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mx-auto max-w-3xl space-y-5">
+            <motion.div
+              key={section}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="mx-auto max-w-3xl space-y-5"
+            >
               {supported === false && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs leading-relaxed text-amber-100/90">
                   <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
@@ -358,13 +377,13 @@ export default function F75App() {
               {section === "keys" && <KeysPanel active={section === "keys"} />}
 
               {section === "system" && <SystemPanel driver={driverReady ? driverRef.current : null} />}
-            </div>
+            </motion.div>
           </main>
         </div>
       </div>
 
       {/* ----------------------------- status bar ----------------------------- */}
-      <footer className="shrink-0 border-t border-zinc-800/80 bg-zinc-950">
+      <footer className="relative z-10 shrink-0 border-t border-zinc-800/80 bg-zinc-950">
         <div className="scrollbar-thin flex items-center gap-2 overflow-x-auto px-4 py-2 text-[11px] text-zinc-500 sm:px-5">
           <Chip ok={status.wiredCommand} title="Cabo USB-C · canal de comando 0xFF13">cabo·cmd</Chip>
           <Chip ok={status.wiredDisplay} title="Cabo USB-C · canal de display 0xFF68">cabo·disp</Chip>
@@ -402,7 +421,7 @@ function DevicePanel(props: {
     <section className="space-y-5" aria-label="Dispositivo">
       <SectionHeader icon={Usb} title="Dispositivo" desc="Conexão e estado do hardware" />
 
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <Chip ok={status.wiredCommand}>cabo · comando 0xFF13</Chip>
@@ -457,7 +476,7 @@ function DevicePanel(props: {
         </CardContent>
       </Card>
 
-      <Card className="border-rose-500/20 bg-rose-500/[0.03]">
+      <Card className="border-rose-500/20 bg-rose-500/[0.03] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.03)]">
         <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <TriangleAlert className="h-4 w-4 text-rose-400" />
@@ -520,7 +539,7 @@ function LightingPanel(props: {
         </LockedNote>
       )}
 
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-5 p-4 sm:p-5">
           <div className="space-y-2">
             <FieldLabel>Efeito</FieldLabel>
@@ -651,7 +670,7 @@ function PerformancePanel(props: {
         </LockedNote>
       )}
 
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-5 p-4 sm:p-5">
           <div className="space-y-2">
             <FieldLabel>Latência (polling)</FieldLabel>

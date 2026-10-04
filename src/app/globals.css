@@ -116,18 +116,36 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    color-scheme: dark;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.011em;
+  }
+  :focus-visible {
+    outline: 2px solid rgb(16 185 129 / 0.6);
+    outline-offset: 2px;
   }
 }
 
-/* ---------- Aula F75 Max guide custom styles ---------- */
-@keyframes rgbshift {
-  to {
-    background-position: 200% 0;
-  }
+/* ---------- F75 driver surfaces ---------- */
+
+/* Superfície padrão dos cards: hairline border + inner top highlight
+   (estilo Linear/Vercel — profundidade sem drop shadow pesado). */
+@utility card-surface {
+  border: 1px solid rgb(255 255 255 / 0.07);
+  background: linear-gradient(to bottom, rgb(24 24 27 / 0.72), rgb(24 24 27 / 0.42));
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+    0 1px 2px rgb(0 0 0 / 0.3);
 }
 
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
 .scrollbar-thin::-webkit-scrollbar {
   height: 6px;
   width: 6px;

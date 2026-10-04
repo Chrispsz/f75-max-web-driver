@@ -387,3 +387,22 @@ Work Log:
 
 Stage Summary:
 - Pack final: F75 shine, Matrix ciano, Pulso EQ. Aurora ciano, F75 badge e Vórtice totalmente removidos (UI + GIFs + geradores). Se quiser alguma de volta, o design está documentado no histórico do worklog e é fácil regerar.
+---
+Task ID: 21
+Agent: Z.ai Code (main)
+Task: Auditoria visual/UX completa (padrão Stripe/Linear/Apple/Cal.com), polimento do simulador, bateria de testes e preparo pro GitHub.
+
+Work Log:
+- globals.css: utilitário card-surface (hairline border + inner top highlight + micro drop shadow, estilo Linear/Vercel); body antialiased + letter-spacing -0.011em + font-feature cv11/ss01; :focus-visible com outline esmeralda; color-scheme dark; scrollbar-thin com scrollbar-width/color (Firefox); @keyframes rgbshift órfã removida.
+- F75App: luz ambiente radial esmeralda no topo (z-0 sob o conteúdo); transição de seções via framer-motion (motion.div key={section}, fade+y 6px, 180ms easeOut); item ativo da sidebar com barra indicadora esmeralda 3px; rodapé da sidebar em 3 linhas limpas; cards → card-surface; card de reset com inner highlight.
+- DisplayPanel (o simulador): canvas embutido em mockup de device (moldura rounded-2xl + glow ciano rgba(65,232,255,0.1) da marca + legenda "prévia fiel · RGB565 · {fps}"); PRÉVIA FUNCIONA SEM HARDWARE — dropzone/geradores/artes prontas liberados (não tocam no driver), upload/tela preta/relógio continuam exigindo cabo; guardas !driver em upload/blankScreen; LockedNote reescrita ("a prévia abaixo funciona sem conectar").
+- KeysPanel: tecla vira keycap mecânica (gradiente zinc + inner highlight); MonoLine com [code,mods,time].filter(Boolean).join(" · ") (e.code vazio em eventos sintéticos não vaza "· 15:20:43"); empty state com ícone pulsante.
+- atoms: Segmented com aria-pressed.
+- Auditoria/limpeza: removidos public/led-compare.png, logo.svg, stardew-*.gif (sem refs), src/app/api/route.ts (stub Hello world), tailwind.config.ts (inerte no Tailwind v4 — postcss não referencia); package.json → f75-max-web-driver v1.0.0.
+- README.md completo (recursos, protocolo, udev, privacidade, avisos).
+- Validação: eslint 0/0; tsc limpo em src/ (erros restantes só em examples/ e skills/, fora do build); Agent Browser — simulador gerando bola/plasma e carregando Matrix ciano SEM teclado (fps fiel: 15.2/14.3), "Enviar pro slot" disabled=true sem hardware, aria-pressed ×6, keycap capturando teclas (Shift/a), Limpar zera prévia, persistência de seção via localStorage, mobile 390px impecável (bezel + footer), 0 erros de página/console.
+
+Stage Summary:
+- Site no padrão Linear/Stripe: dark impecável com profundidade em camadas, tipografia afiada, transições suaves, a11y reforçada.
+- Simulador do display validado como fiel (RGB565 decodificado de volta + fps exato do device) e agora demonstrável sem hardware.
+- Repo renomeado f75-max-web-driver v1.0.0 com README; commit pronto pro GitHub (sandbox sem credenciais — push fica pro usuário com 1 comando).

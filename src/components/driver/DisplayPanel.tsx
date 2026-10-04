@@ -150,7 +150,7 @@ export function DisplayPanel({
   const upload = () =>
     void run("upload", async () => {
       const current = preparedRef.current;
-      if (!current) return;
+      if (!current || !driver) return;
       const token = { cancelled: false };
       cancelRef.current = token;
       setUploading(true);
@@ -177,6 +177,7 @@ export function DisplayPanel({
    */
   const blankScreen = () =>
     void run("blank", async () => {
+      if (!driver) return;
       f75log.info(`⬛ Enviando tela preta pro slot ${slotRef.current} (1 frame · 8 blocos)…`);
       const stream = buildDisplayStream([{ image: new ImageData(new Uint8ClampedArray(128 * 128 * 4), 128, 128), delayMs: 100 }], "stretch");
       await driver!.uploadDisplay(stream, Number(slotRef.current), () => {});
@@ -203,11 +204,11 @@ export function DisplayPanel({
       {!ready && (
         <LockedNote>
           <Monitor className="h-3.5 w-3.5 shrink-0" />
-          Conecte o teclado via cabo USB-C — display usa o canal 0xFF68 (só existe no cabo).
+          Enviar pro teclado exige cabo USB-C (display usa o canal 0xFF68, só existe no cabo) — a prévia abaixo funciona sem conectar.
         </LockedNote>
       )}
 
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-5 p-4 sm:p-5">
           <div className="space-y-2">
             <FieldLabel>Conteúdo</FieldLabel>
@@ -215,21 +216,18 @@ export function DisplayPanel({
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
-                if (ready) handleFile(e.dataTransfer.files?.[0] ?? null);
+                handleFile(e.dataTransfer.files?.[0] ?? null);
               }}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-6 text-center transition-colors ${
-                ready ? "border-zinc-700 hover:border-emerald-500/50 hover:bg-emerald-500/[0.03]" : "cursor-not-allowed border-zinc-800 opacity-50"
-              }`}
+              className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-700 px-4 py-6 text-center transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/[0.03]"
             >
               <ImageIcon className="h-5 w-5 text-zinc-500" />
               <span className="text-xs text-zinc-400">
                 <strong className="text-zinc-200">GIF, PNG, JPG ou WebP</strong> — clique ou arraste aqui
               </span>
-              <span className="text-[10px] text-zinc-600">convertido pra RGB565 128×128 exatamente como o driver nativo</span>
+              <span className="text-[10px] text-zinc-600">convertido pra RGB565 128×128 exatamente como o driver nativo · prévia sem conectar</span>
               <input
                 type="file"
                 accept="image/gif,image/png,image/jpeg,image/webp"
-                disabled={!ready}
                 className="sr-only"
                 onChange={(e) => {
                   handleFile(e.target.files?.[0] ?? null);
@@ -238,10 +236,10 @@ export function DisplayPanel({
               />
             </label>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => handleGenerate("bounce")} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
+              <Button onClick={() => handleGenerate("bounce")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Gerar: bola ciano
               </Button>
-              <Button onClick={() => handleGenerate("plasma")} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
+              <Button onClick={() => handleGenerate("plasma")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Gerar: plasma gelo
               </Button>
             </div>
@@ -252,7 +250,7 @@ export function DisplayPanel({
                   <button
                     key={a.file}
                     type="button"
-                    disabled={!ready || busy !== null}
+                    disabled={busy !== null}
                     onClick={() => loadReadyArt(a)}
                     className="flex items-center gap-2.5 rounded-md border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-colors hover:border-emerald-500/50 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -275,14 +273,18 @@ export function DisplayPanel({
           {prepared && (
             <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
               <div className="space-y-2">
-                <canvas
-                  ref={canvasRef}
-                  width={128}
-                  height={128}
-                  className="h-36 w-36 rounded-lg border border-zinc-800 bg-black [image-rendering:pixelated]"
-                  aria-label="Prévia do conteúdo no display do teclado"
-                />
-                <p className="truncate text-[10px] text-zinc-600" title={prepared.fileName}>
+                {/* mockup da telinha: moldura de device + glow ciano da marca */}
+                <div className="w-fit rounded-2xl border border-zinc-800 bg-black p-1.5 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_0_28px_rgba(65,232,255,0.1),0_8px_24px_rgba(0,0,0,0.5)]">
+                  <canvas
+                    ref={canvasRef}
+                    width={128}
+                    height={128}
+                    className="h-36 w-36 rounded-lg bg-black [image-rendering:pixelated]"
+                    aria-label="Prévia do conteúdo no display do teclado"
+                  />
+                </div>
+                <p className="text-center font-mono text-[10px] text-zinc-500">prévia fiel · RGB565 · {prepared.stream.avgFps.toFixed(1)} fps</p>
+                <p className="mx-auto max-w-[168px] truncate text-center text-[10px] text-zinc-600" title={prepared.fileName}>
                   {prepared.fileName}
                 </p>
               </div>
@@ -315,7 +317,7 @@ export function DisplayPanel({
                     </div>
                   ) : null}
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={upload} disabled={!ready || busy !== null} className="h-9 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
+                    <Button onClick={upload} disabled={!ready || busy !== null} title={!ready ? "Conecte o teclado via cabo pra enviar" : undefined} className="h-9 bg-emerald-500 text-zinc-950 hover:bg-emerald-400">
                       {busy === "upload" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                       Enviar pro slot {slot}
                     </Button>
@@ -336,7 +338,7 @@ export function DisplayPanel({
         </CardContent>
       </Card>
 
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1.5">
@@ -367,7 +369,7 @@ export function DisplayPanel({
         </CardContent>
       </Card>
 
-      <Card className="border-zinc-800 bg-zinc-900/50">
+      <Card className="card-surface">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
           <div className="flex items-center gap-2.5">
             <Clock className="h-4 w-4 text-emerald-400" />

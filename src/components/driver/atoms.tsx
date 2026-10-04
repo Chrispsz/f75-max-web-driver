@@ -104,6 +104,7 @@ export function Segmented<T extends string | number>({
           type="button"
           title={o.title}
           disabled={disabled}
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
             "min-h-[32px] rounded-md border px-2.5 py-1 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
