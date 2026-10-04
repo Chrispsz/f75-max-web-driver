@@ -1,13 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Eraser, Image as ImageIcon, Layers, Loader2, Monitor, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { Clock, Eraser, Image as ImageIcon, Loader2, Monitor, Square, Sparkles, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
-import { Chip, FieldLabel, LockedNote, MonoLine, Segmented, SectionHeader } from "./atoms";
+import { FieldLabel, LockedNote, MonoLine, Segmented, SectionHeader } from "./atoms";
 import type { F75Driver } from "@/lib/f75/driver";
 import { f75log } from "@/lib/f75/logger";
 import {
@@ -31,8 +29,11 @@ interface Prepared {
 /** Pack de artes geradas pra composição branco/cinza + LED ciano (#41E8FF). */
 const READY_ARTS = [
   { file: "/art/f75-badge.gif", name: "F75 badge", desc: "logo prata + brilho ciano" },
-  { file: "/art/aurora-ciano.gif", name: "Aurora ciano", desc: "ondas gelo em loop" },
-  { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras ciano pulsando" },
+  { file: "/art/f75-shine.gif", name: "F75 shine", desc: "brilho varrendo o logo" },
+  { file: "/art/matrix-ciano.gif", name: "Matrix ciano", desc: "chuva de glifos" },
+  { file: "/art/vortex.gif", name: "Vórtice", desc: "portal girando" },
+  { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras + pico caindo" },
+  { file: "/art/aurora-ciano.gif", name: "Aurora ciano", desc: "ondas gelo + estrela" },
 ] as const;
 
 export function DisplayPanel({
@@ -51,14 +52,10 @@ export function DisplayPanel({
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [progress, setProgress] = useState({ sent: 0, total: 0, eta: 0 });
   const [uploading, setUploading] = useState(false);
-  const [autoClock, setAutoClock] = useState(false);
-  const [eraseArmed, setEraseArmed] = useState(false);
-  const eraseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const preparedRef = useRef<Prepared | null>(null);
   const cancelRef = useRef({ cancelled: false });
   const slotRef = useRef("1");
-  const clockTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   preparedRef.current = prepared;
   slotRef.current = slot;
 
@@ -98,17 +95,9 @@ export function DisplayPanel({
 
   /* ------------------------------ relógio ------------------------------- */
 
+  /** Sincronismo manual (o automático foi removido: cada sync repinta a
+   *  telinha e piscava por cima do conteúdo a cada minuto). */
   const syncClock = useCallback(() => run("clock", () => driver!.syncClock()), [run, driver]);
-
-  useEffect(() => {
-    if (!autoClock || !driver) return;
-    void syncClock();
-    clockTimer.current = setInterval(() => void syncClock(), 60_000);
-    return () => {
-      if (clockTimer.current) clearInterval(clockTimer.current);
-      clockTimer.current = null;
-    };
-  }, [autoClock, driver, syncClock]);
 
   /* ------------------------------ conteúdo ------------------------------ */
 
@@ -146,7 +135,7 @@ export function DisplayPanel({
       setPrepared({ stream, frames, fileName: kind === "bounce" ? "bola-ciano (gerada)" : "plasma-gelo (gerada)", file: null });
     });
 
-  /** Baixa uma arte do pack (public/art) e roda o mesmo pipeline do upload. */
+  /** Baixa uma arte do pack (public/art) e roda o MESMO pipeline do upload. */
   const loadReadyArt = (art: (typeof READY_ARTS)[number]) =>
     void run("art", async () => {
       f75log.info(`Arte pronta “${art.name}” — baixando ${art.file}…`);
@@ -181,23 +170,21 @@ export function DisplayPanel({
     f75log.warn("Cancelamento solicitado — parando após o bloco atual…");
   };
 
-  const activateSlot = () =>
-    void run("slot", () => driver!.activateDisplaySlot(Number(slotRef.current)));
-
-  const eraseMemory = () => {
-    if (!eraseArmed) {
-      setEraseArmed(true);
-      if (eraseTimer.current) clearTimeout(eraseTimer.current);
-      eraseTimer.current = setTimeout(() => setEraseArmed(false), 6000);
-      f75log.warn("Apagar memória de display: clique de novo pra confirmar (apaga TODOS os slots).");
-      return;
-    }
-    if (eraseTimer.current) clearTimeout(eraseTimer.current);
-    setEraseArmed(false);
-    void run("erase", async () => {
-      await driver!.eraseDisplayMemory((stage) => f75log.info(`· ${stage}`));
+  /**
+   * Tela preta no slot selecionado — a forma SEGURA de "tirar o GIF".
+   * Usa exatamente o caminho do upload (sessão → metadados → 8 blocos →
+   * commit), que é o único fluxo que o firmware executa com garantia:
+   * sobrescreve o slot com 1 frame preto e ativa no commit.
+   * (Os comandos de apagar memória foram removidos — no firmware atual eles
+   * travavam o teclado, resetavam o LED e não removiam o conteúdo.)
+   */
+  const blankScreen = () =>
+    void run("blank", async () => {
+      f75log.info(`⬛ Enviando tela preta pro slot ${slotRef.current} (1 frame · 8 blocos)…`);
+      const stream = buildDisplayStream([{ image: new ImageData(new Uint8ClampedArray(128 * 128 * 4), 128, 128), delayMs: 100 }], "stretch");
+      await driver!.uploadDisplay(stream, Number(slotRef.current), () => {});
+      f75log.ok("Tela preta aplicada — o slot agora mostra só o fundo apagado.");
     });
-  };
 
   const percent = progress.total > 0 ? Math.round((progress.sent / progress.total) * 100) : 0;
 
@@ -262,18 +249,26 @@ export function DisplayPanel({
               </Button>
             </div>
             <div className="space-y-1.5 border-t border-zinc-800/70 pt-3">
-              <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza</FieldLabel>
-              <div className="grid gap-1.5 sm:grid-cols-3">
+              <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza · loop perfeito</FieldLabel>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {READY_ARTS.map((a) => (
                   <button
                     key={a.file}
                     type="button"
                     disabled={!ready || busy !== null}
                     onClick={() => loadReadyArt(a)}
-                    className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-2 text-left transition-colors hover:border-emerald-500/50 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex items-center gap-2.5 rounded-md border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-colors hover:border-emerald-500/50 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <span className="block text-xs font-medium text-zinc-200">{a.name}</span>
-                    <span className="block text-[10px] text-zinc-500">{a.desc}</span>
+                    <img
+                      src={a.file}
+                      alt={`Prévia da arte ${a.name}`}
+                      loading="lazy"
+                      className="h-14 w-14 shrink-0 rounded border border-zinc-800 bg-black [image-rendering:pixelated]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-medium text-zinc-200">{a.name}</span>
+                      <span className="block text-[10px] leading-snug text-zinc-500">{a.desc}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -345,7 +340,7 @@ export function DisplayPanel({
       </Card>
 
       <Card className="border-zinc-800 bg-zinc-900/50">
-        <CardContent className="space-y-4 p-4 sm:p-5">
+        <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1.5">
               <FieldLabel>Slot de destino</FieldLabel>
@@ -357,43 +352,21 @@ export function DisplayPanel({
               />
             </div>
             <Button
-              onClick={activateSlot}
+              onClick={blankScreen}
               disabled={!ready || busy !== null || uploading}
               variant="outline"
               size="sm"
               className="h-8 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800"
-              title="Troca o conteúdo exibido sem reenviar — usa metadados + commit do protocolo nativo"
+              title="Envia 1 frame preto pro slot selecionado — apaga o GIF que está na telinha pelo próprio caminho do upload"
             >
-              {busy === "slot" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Layers className="mr-1.5 h-3.5 w-3.5" />}
-              Ativar slot {slot}
+              {busy === "blank" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Square className="mr-1.5 h-3.5 w-3.5" />}
+              Tela preta no slot {slot}
             </Button>
           </div>
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            Enviar pro slot <strong className="text-zinc-300">{slot}</strong> já ativa o conteúdo no commit. “Ativar” troca pro slot {slot} sem reenviar — se a telinha não mudar, seu firmware só troca no upload (reenvie a imagem).
+            O upload já ativa o slot no commit — a telinha passa a mostrar o que você enviou. Pra trocar, envie de novo pro mesmo slot; pra “apagar” um GIF, use{" "}
+            <strong className="text-zinc-300">Tela preta</strong> (sobrescreve o slot com um frame preto pelo caminho garantido do firmware).
           </p>
-          <div className="flex items-center justify-between gap-3 border-t border-zinc-800/70 pt-3">
-            <div className="flex items-center gap-2.5">
-              <Trash2 className={`h-4 w-4 ${eraseArmed ? "text-rose-400" : "text-zinc-500"}`} />
-              <div>
-                <p className="text-xs font-semibold">Apagar memória de display</p>
-                <p className="text-[11px] text-zinc-500">remove o conteúdo de TODOS os slots · dois cliques</p>
-              </div>
-            </div>
-            <Button
-              onClick={eraseMemory}
-              disabled={!ready || busy !== null}
-              variant="outline"
-              size="sm"
-              className={`h-8 ${
-                eraseArmed
-                  ? "border-rose-500 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25"
-                  : "border-zinc-700 bg-transparent text-zinc-400 hover:bg-zinc-800"
-              }`}
-            >
-              {busy === "erase" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Eraser className="mr-1.5 h-3.5 w-3.5" />}
-              {eraseArmed ? "Confirmar" : "Apagar tudo"}
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -403,19 +376,13 @@ export function DisplayPanel({
             <Clock className="h-4 w-4 text-emerald-400" />
             <div>
               <p className="text-xs font-semibold">Relógio do display</p>
-              <p className="text-[11px] text-zinc-500">sincroniza com este computador</p>
+              <p className="text-[11px] text-zinc-500">sincronização manual — sem repintura automática</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Label className="flex items-center gap-2 text-xs text-zinc-400">
-              <Switch checked={autoClock} disabled={!ready} onCheckedChange={setAutoClock} aria-label="Relógio automático a cada minuto" />
-              auto
-            </Label>
-            <Button onClick={() => void syncClock()} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
-              {busy === "clock" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
-              Sincronizar
-            </Button>
-          </div>
+          <Button onClick={() => void syncClock()} disabled={!ready || busy !== null} variant="outline" size="sm" className="h-8 border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800">
+            {busy === "clock" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
+            Sincronizar agora
+          </Button>
         </CardContent>
       </Card>
 

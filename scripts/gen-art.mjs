@@ -6,6 +6,10 @@
  * o pipeline do web driver (r>>3, g>>2, b>>3) reproduz essas cores sem perda.
  * Loop perfeito: todas as fases usam períodos inteiros sobre o total de frames.
  *
+ * v8: F75 badge (intocado — aprovado), F75 shine (glint varrendo o logo +
+ * partículas), Matrix ciano (chuva de glifos), Vórtice (portal girando),
+ * Pulso EQ com pico que cai, Aurora com estrela cadente.
+ *
  * Uso: bun scripts/gen-art.mjs  (saída em public/art/)
  */
 import { GIFEncoder } from "gifenc";
@@ -57,7 +61,17 @@ const GLYPHS = {
   M: [0b10001, 0b11011, 0b10101, 0b10001, 0b10001, 0b10001, 0b10001],
   A: [0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
   X: [0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001],
+  // dígitos extras pra chuva de glifos (Matrix)
+  "0": [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
+  "1": [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
+  "2": [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],
+  "3": [0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110],
+  "4": [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
+  "6": [0b01110, 0b10000, 0b11110, 0b10001, 0b10001, 0b10001, 0b01110],
+  "8": [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
+  "9": [0b11110, 0b10001, 0b10001, 0b11110, 0b00001, 0b00001, 0b11110],
 };
+const GLYPH_KEYS = Object.keys(GLYPHS); // letras + dígitos pra chuva
 
 /** Desenha texto 5×7 escalado. Retorna largura total. */
 function drawText(f, text, ox, oy, scale, color, shadow) {
@@ -86,6 +100,15 @@ function drawText(f, text, ox, oy, scale, color, shadow) {
   return cursor - ox;
 }
 
+/** Desenha UM glifo 5×7 (pro Matrix) na posição dada. */
+function drawGlyph(f, ch, ox, oy, color) {
+  const glyph = GLYPHS[ch];
+  if (!glyph) return;
+  for (let gy = 0; gy < 7; gy++)
+    for (let gx = 0; gx < 5; gx++)
+      if (glyph[gy] & (1 << (4 - gx))) px(f, ox + gx, oy + gy, color);
+}
+
 /** PRNG determinístico (starfield estável entre frames). */
 const mulberry = (seed) => () => {
   seed |= 0;
@@ -97,6 +120,39 @@ const mulberry = (seed) => () => {
 
 const TAU = Math.PI * 2;
 
+/** Fundo com grade + cantos em L (base compartilhada dos badges). */
+function badgeBase(fr) {
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (y % 16 === 0) px(fr, x, y, "PANEL");
+      else if (x % 16 === 0) px(fr, x, y, "BG2");
+      else px(fr, x, y, y < 100 ? "BG" : "BG2");
+    }
+  const corner = (cx, cy, dx, dy, color) => {
+    for (let i = 0; i < 14; i++) {
+      px(fr, cx + dx * i, cy, color);
+      px(fr, cx, cy + dy * i, color);
+    }
+  };
+  return corner;
+}
+
+/** "F75" escala 6 centrado + sombra. Retorna bbox do logo. */
+function drawLogo(fr, shadow) {
+  const scale = 6;
+  const total = 3 * 6 * scale - scale;
+  const ox = Math.round((W - total) / 2);
+  drawText(fr, "F75", ox, 34, scale, "SILVER", shadow);
+  return { ox, oy: 34, w: total, h: 7 * scale };
+}
+
+/** "MAX" pequeno embaixo. */
+function drawMax(fr, color = "GRAY3") {
+  const mscale = 2;
+  const mtotal = 3 * 6 * mscale - mscale;
+  drawText(fr, "MAX", Math.round((W - mtotal) / 2), 106, mscale, color);
+}
+
 /* ------------------------- 1. F75 badge (30 frames) ------------------------ */
 function f75Badge() {
   const FRAMES = 30;
@@ -104,36 +160,16 @@ function f75Badge() {
   for (let f = 0; f < FRAMES; f++) {
     const t = f / FRAMES;
     const fr = newFrame();
-
-    // fundo escuro com grade apagada
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        if (y % 16 === 0) px(fr, x, y, "PANEL");
-        else if (x % 16 === 0) px(fr, x, y, "BG2");
-        else px(fr, x, y, y < 100 ? "BG" : "BG2");
-      }
-
-    // cantos em L (brackets)
-    const corner = (cx, cy, dx, dy) => {
-      for (let i = 0; i < 14; i++) {
-        px(fr, cx + dx * i, cy, "GRAY2");
-        px(fr, cx, cy + dy * i, "GRAY2");
-      }
-    };
-    corner(6, 6, 1, 1);
-    corner(121, 6, -1, 1);
-    corner(6, 121, 1, -1);
-    corner(121, 121, -1, -1);
+    const corner = badgeBase(fr);
+    corner(6, 6, 1, 1, "GRAY2");
+    corner(121, 6, -1, 1, "GRAY2");
+    corner(6, 121, 1, -1, "GRAY2");
+    corner(121, 121, -1, -1, "GRAY2");
 
     // pulso de brilho: sombra do logo alterna GRAY1 → CYAN_DIM → CYAN
     const glow = 0.5 + 0.5 * Math.sin(t * TAU);
     const shadow = glow > 0.55 ? "CYAN" : glow > 0.25 ? "CYAN_DIM" : "GRAY1";
-
-    // "F75" grande centralizado — prata com sombra ciano pulsante
-    const scale = 6;
-    const total = 3 * 6 * scale - scale; // 3 chars × 6 col × scale − espaçamento final
-    const ox = Math.round((W - total) / 2);
-    drawText(fr, "F75", ox, 34, scale, "SILVER", shadow);
+    drawLogo(fr, shadow);
 
     // sublinhado varrendo (loop perfeito)
     const sweep = Math.round(t * (W + 44)) - 44;
@@ -144,17 +180,273 @@ function f75Badge() {
       else if (x % 4 === 0) px(fr, x, 92, "GRAY1");
     }
 
-    // "MAX" pequeno embaixo, cinza
-    const mscale = 2;
-    const mtotal = 3 * 6 * mscale - mscale;
-    drawText(fr, "MAX", Math.round((W - mtotal) / 2), 106, mscale, "GRAY3");
+    drawMax(fr);
+    out.push(fr);
+  }
+  return out;
+}
+
+/* ------------------- 2. F75 shine (48 frames) · badge premium -------------- */
+function f75Shine() {
+  const FRAMES = 48;
+  const rnd = mulberry(0x51a3 | 0);
+  const particles = Array.from({ length: 14 }, (_, i) => ({
+    x: Math.floor(rnd() * W),
+    y: Math.floor(rnd() * H),
+    phase: Math.floor(rnd() * FRAMES), // inteiro → seamless
+  }));
+
+  const out = [];
+  for (let f = 0; f < FRAMES; f++) {
+    const t = f / FRAMES;
+    const fr = newFrame();
+    const corner = badgeBase(fr);
+
+    // cantos pulsando com o glow
+    const glow = 0.5 + 0.5 * Math.sin(t * TAU);
+    const cornerColor = glow > 0.6 ? "CYAN" : glow > 0.3 ? "GRAY2" : "GRAY1";
+    corner(6, 6, 1, 1, cornerColor);
+    corner(121, 6, -1, 1, cornerColor);
+    corner(6, 121, 1, -1, cornerColor);
+    corner(121, 121, -1, -1, cornerColor);
+
+    const shadow = glow > 0.55 ? "CYAN" : glow > 0.25 ? "CYAN_DIM" : "GRAY1";
+    const logo = drawLogo(fr, shadow);
+
+    // GLINT diagonal varrendo o logo: clareia pixels prata/ciano próximos à linha
+    const sweepX = -24 + t * (W + 48);
+    for (let y = logo.oy - 2; y < logo.oy + logo.h + 2; y++) {
+      for (let x = logo.ox - 6; x < logo.ox + logo.w + 6; x++) {
+        if (x < 0 || x >= W || y < 0 || y >= H) continue;
+        const d = Math.abs(x - (sweepX + (y - logo.oy) * 0.6));
+        if (d >= 3.5) continue;
+        const cur = fr[y * W + x];
+        if (d < 1.5 && cur === idx("SILVER")) px(fr, x, y, "WHITE");
+        else if (cur === idx("SILVER")) px(fr, x, y, "CYAN_HI");
+        else if (cur === idx("CYAN") || cur === idx("CYAN_DIM")) px(fr, x, y, "CYAN_HI");
+      }
+    }
+
+    // sublinhado com brilho residual do glint
+    const sweep2 = Math.round(t * (W + 44)) - 44;
+    for (let x = 0; x < W; x++) {
+      const d = Math.abs(x - sweep2);
+      if (d < 10) px(fr, x, 92, d < 3 ? "CYAN_HI" : "CYAN");
+      else if (d < 22) px(fr, x, 92, "CYAN_DIM");
+      else if (x % 4 === 0) px(fr, x, 92, "GRAY1");
+    }
+
+    drawMax(fr, "GRAY3");
+
+    // partículas prateadas subindo (1 volta por loop = seamless)
+    for (const p of particles) {
+      const py = (p.y - t * H + H) % H;
+      const wobble = Math.round(2 * Math.sin(t * TAU * 2 + p.phase));
+      const tw = Math.sin(t * TAU + (p.phase / FRAMES) * TAU);
+      if (tw > -0.2) px(fr, (p.x + wobble + W) % W, Math.round(py), tw > 0.5 ? "WHITE" : "SILVER");
+    }
 
     out.push(fr);
   }
   return out;
 }
 
-/* ------------------------ 2. Aurora ciano (90 frames) ---------------------- */
+/* -------------------- 3. Matrix ciano (72 frames) -------------------------- */
+function matrixCiano() {
+  const FRAMES = 72;
+  const COLS = 16; // célula 8×8
+  const ROWS = 16;
+  const rnd = mulberry(0x6d47);
+
+  // por coluna: velocidade (células por loop — múltiplo de ROWS = seamless),
+  // comprimento do rastro e defasagem inicial
+  const cols = Array.from({ length: COLS }, (_, c) => ({
+    speed: 16 * (1 + (c % 3 === 0 ? 1 : 0)), // 16 ou 32 células/loop
+    trail: 5 + Math.floor(rnd() * 8), // 5..12
+    offset: rnd() * ROWS,
+  }));
+
+  const out = [];
+  for (let f = 0; f < FRAMES; f++) {
+    const t = f / FRAMES;
+    const fr = newFrame();
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) px(fr, x, y, (x + y) % 32 === 0 ? "BG2" : "BG");
+
+    for (let c = 0; c < COLS; c++) {
+      const col = cols[c];
+      const head = (col.offset + col.speed * t) % ROWS; // posição do cabeçote (células)
+      for (let r = 0; r < ROWS; r++) {
+        const d = (head - r + ROWS * 2) % ROWS; // distância atrás do cabeçote
+        if (d > col.trail) continue;
+        // glifo estável enquanto cai: muda a cada avanço inteiro de célula
+        const k = (Math.floor(head) - r + ROWS * 2) % ROWS;
+        const ch = GLYPH_KEYS[(c * 31 + k * 17 + 7) % GLYPH_KEYS.length];
+        const gx = c * 8 + 1;
+        const gy = r * 8;
+        let color;
+        if (d < 1) color = "WHITE";
+        else if (d < 2.5) color = "CYAN_HI";
+        else if (d < col.trail * 0.55) color = "CYAN";
+        else color = "CYAN_DIM";
+        drawGlyph(fr, ch, gx, gy, color);
+      }
+    }
+    out.push(fr);
+  }
+  return out;
+}
+
+/* ------------------------ 4. Vórtice (72 frames) --------------------------- */
+function vortex() {
+  const FRAMES = 72;
+  const rnd = mulberry(0x0f75);
+  // faíscas em órbita (1 volta por loop = seamless)
+  const sparks = Array.from({ length: 10 }, (_, i) => ({
+    r: 38 + Math.floor(rnd() * 20),
+    a0: (i / 10) * TAU,
+  }));
+
+  const out = [];
+  for (let f = 0; f < FRAMES; f++) {
+    const t = f / FRAMES;
+    const fr = newFrame();
+    const cx = (W - 1) / 2;
+    const cy = (H - 1) / 2;
+
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const dx = x - cx;
+        const dy = y - cy;
+        const r = Math.sqrt(dx * dx + dy * dy);
+        if (r > 63) {
+          px(fr, x, y, "BG");
+          continue;
+        }
+        const th = Math.atan2(dy, dx);
+        // 3 braços girando + anéis fluindo pra fora — freq. inteiras = seamless
+        const v =
+          Math.sin(th * 3 - r * 0.2 + t * TAU) * 0.65 +
+          Math.sin(r * 0.45 - t * TAU * 2) * 0.35;
+        const n = (v / 1.35 + 1) / 2;
+        let name;
+        if (n > 0.88) name = "WHITE";
+        else if (n > 0.74) name = "CYAN_HI";
+        else if (n > 0.56) name = "CYAN";
+        else if (n > 0.4) name = "CYAN_DIM";
+        else if (n > 0.26) name = "GRAY2";
+        else name = "BG";
+        px(fr, x, y, name);
+      }
+    }
+
+    // núcleo pulsante
+    const core = 0.5 + 0.5 * Math.sin(t * TAU);
+    const coreR = 4 + core * 3;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const dx = x - cx;
+        const dy = y - cy;
+        if (dx * dx + dy * dy <= coreR * coreR) px(fr, x, y, core > 0.6 ? "WHITE" : "CYAN_HI");
+      }
+
+    // faíscas prateadas em órbita
+    for (const s of sparks) {
+      const a = s.a0 + t * TAU;
+      const x = Math.round(cx + Math.cos(a) * s.r);
+      const y = Math.round(cy + Math.sin(a) * s.r * 0.92);
+      px(fr, x, y, "WHITE");
+      px(fr, x + (x > cx ? -2 : 2), y, "SILVER");
+    }
+
+    // moldura fina
+    for (let x = 0; x < W; x++) {
+      px(fr, x, 0, "GRAY1");
+      px(fr, x, 127, "GRAY1");
+    }
+    for (let y = 0; y < H; y++) {
+      px(fr, 0, y, "GRAY1");
+      px(fr, 127, y, "GRAY1");
+    }
+    out.push(fr);
+  }
+  return out;
+}
+
+/* ------------------------ 5. Pulso EQ (60 frames) ------------------------- */
+function pulseEq() {
+  const FRAMES = 60;
+  const BARS = 14;
+  const BW = 7;
+  const GAP = 2;
+  const total = BARS * BW + (BARS - 1) * GAP; // 124
+  const ox = Math.floor((W - total) / 2);
+  const BASE = 108; // linha de base
+  const MAXH = 92;
+  const PEAK_WIN = 10; // janela do pico (frames) — cai sozinho depois
+
+  // alturas por barra/frame (ciclos inteiros = seamless)
+  const heights = [];
+  for (let f = 0; f < FRAMES; f++) {
+    const t = f / FRAMES;
+    const row = [];
+    for (let b = 0; b < BARS; b++) {
+      const cycles = 1 + (b % 4);
+      const phase = (b / BARS) * TAU;
+      const amp = 0.25 + 0.75 * Math.abs(Math.sin(t * TAU * cycles + phase));
+      row.push(Math.max(4, Math.round(amp * MAXH)));
+    }
+    heights.push(row);
+  }
+
+  const out = [];
+  for (let f = 0; f < FRAMES; f++) {
+    const t = f / FRAMES;
+    const fr = newFrame();
+    // fundo + grade vertical apagada
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        if (x % 16 === 0) px(fr, x, y, "BG2");
+        else px(fr, x, y, "BG");
+      }
+    // topo: título "F75" minúsculo
+    drawText(fr, "F75", ox, 6, 1, "GRAY3");
+
+    for (let b = 0; b < BARS; b++) {
+      const h = heights[f][b];
+      // pico = máximo da janela recente (cai quando a barra desce)
+      let peak = 0;
+      for (let w = 0; w < PEAK_WIN; w++) peak = Math.max(peak, heights[(f - w + FRAMES) % FRAMES][b]);
+      const bx = ox + b * (BW + GAP);
+      for (let i = 0; i < h; i++) {
+        const y = BASE - i;
+        let name;
+        if (i >= h - 2) name = "WHITE"; // cap branco
+        else if (i > h * 0.66) name = "CYAN_HI";
+        else if (i > h * 0.33) name = "CYAN";
+        else if (i > 6) name = "CYAN_DIM";
+        else name = "GRAY2";
+        for (let x = bx; x < bx + BW; x++) px(fr, x, y, name);
+      }
+      // marca do pico (flutuando acima da barra)
+      if (peak > h + 2) {
+        const py = BASE - peak;
+        for (let x = bx + 1; x < bx + BW - 1; x++) px(fr, x, py, "SILVER");
+        for (let x = bx + 2; x < bx + BW - 2; x++) px(fr, x, py + 1, "GRAY3");
+      }
+    }
+    // linha de base + reflexo apagado
+    for (let x = ox - 2; x < ox + total + 2; x++) {
+      px(fr, x, BASE + 1, "GRAY2");
+      px(fr, x, BASE + 3, "GRAY1");
+      px(fr, x, BASE + 5, "BG2");
+    }
+    out.push(fr);
+  }
+  return out;
+}
+
+/* ------------------------ 6. Aurora ciano (90 frames) ---------------------- */
 function auroraCiano() {
   const FRAMES = 90;
   // starfield determinístico
@@ -171,19 +463,20 @@ function auroraCiano() {
     const fr = newFrame();
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        // 3 ondas com períodos inteiros → loop perfeito
+        // 4 ondas com períodos inteiros → loop perfeito
         const v =
           Math.sin((x / W) * TAU * 2 + t) +
           Math.sin((y / H) * TAU * 1.5 - t) * 0.8 +
-          Math.sin(((x + y) / (W + H)) * TAU * 2 + t * 2) * 0.5;
-        const n = (v / 2.3 + 1) / 2; // 0..1
+          Math.sin(((x + y) / (W + H)) * TAU * 2 + t * 2) * 0.5 +
+          Math.sin((x / W) * TAU * 3 - t) * 0.3;
+        const n = (v / 2.6 + 1) / 2; // 0..1
         // posterização em bandas (estética pixelart)
         let name;
-        if (n > 0.86) name = "WHITE";
-        else if (n > 0.74) name = "CYAN_HI";
-        else if (n > 0.58) name = "CYAN";
-        else if (n > 0.44) name = "CYAN_DIM";
-        else if (n > 0.32) name = "GRAY2";
+        if (n > 0.88) name = "WHITE";
+        else if (n > 0.76) name = "CYAN_HI";
+        else if (n > 0.6) name = "CYAN";
+        else if (n > 0.46) name = "CYAN_DIM";
+        else if (n > 0.33) name = "GRAY2";
         else if (n > 0.22) name = "GRAY1";
         else name = "BG";
         px(fr, x, y, name);
@@ -194,6 +487,13 @@ function auroraCiano() {
       const tw = Math.sin(t + s.phase);
       if (tw > 0.3) px(fr, s.x, s.y, tw > 0.85 ? "WHITE" : "SILVER");
     }
+    // estrela cadente: 1 travessia por loop (só existe dentro do loop → seamless)
+    const mt = (f / FRAMES - 0.55) / 0.2; // ativa entre 55% e 75% do loop
+    if (mt >= 0 && mt <= 1) {
+      const sx = Math.round(10 + mt * 96);
+      const sy = Math.round(14 + mt * 52);
+      for (let i = 0; i < 7; i++) px(fr, sx - i * 2, sy - i, i < 2 ? "WHITE" : i < 4 ? "SILVER" : "GRAY3");
+    }
     // moldura fina
     for (let x = 0; x < W; x++) {
       px(fr, x, 0, "GRAY1");
@@ -202,59 +502,6 @@ function auroraCiano() {
     for (let y = 0; y < H; y++) {
       px(fr, 0, y, "GRAY1");
       px(fr, 127, y, "GRAY1");
-    }
-    out.push(fr);
-  }
-  return out;
-}
-
-/* ------------------------- 3. Pulso EQ (60 frames) ------------------------- */
-function pulseEq() {
-  const FRAMES = 60;
-  const BARS = 14;
-  const BW = 7;
-  const GAP = 2;
-  const total = BARS * BW + (BARS - 1) * GAP; // 124
-  const ox = Math.floor((W - total) / 2);
-  const BASE = 108; // linha de base
-  const MAXH = 92;
-
-  const out = [];
-  for (let f = 0; f < FRAMES; f++) {
-    const t = f / FRAMES;
-    const fr = newFrame();
-    // fundo + grade vertical apagada
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        if (x % 16 === 0) px(fr, x, y, "BG2");
-        else px(fr, x, y, "BG");
-      }
-    // topo: título "F75" minúsculo
-    drawText(fr, "F75", ox, 6, 1, "GRAY3");
-
-    for (let b = 0; b < BARS; b++) {
-      // cada barra: nº inteiro de oscilações por loop → seamless
-      const cycles = 1 + (b % 4);
-      const phase = (b / BARS) * TAU;
-      const amp = 0.25 + 0.75 * Math.abs(Math.sin(t * TAU * cycles + phase));
-      const h = Math.max(4, Math.round(amp * MAXH));
-      const bx = ox + b * (BW + GAP);
-      for (let i = 0; i < h; i++) {
-        const y = BASE - i;
-        let name;
-        if (i >= h - 2) name = "WHITE"; // cap branco
-        else if (i > h * 0.66) name = "CYAN_HI";
-        else if (i > h * 0.33) name = "CYAN";
-        else if (i > 6) name = "CYAN_DIM";
-        else name = "GRAY2";
-        for (let x = bx; x < bx + BW; x++) px(fr, x, y, name);
-      }
-    }
-    // linha de base + reflexo apagado
-    for (let x = ox - 2; x < ox + total + 2; x++) {
-      px(fr, x, BASE + 1, "GRAY2");
-      px(fr, x, BASE + 3, "GRAY1");
-      px(fr, x, BASE + 5, "BG2");
     }
     out.push(fr);
   }
@@ -282,8 +529,11 @@ function writeArt(frames, file) {
 
 mkdirSync("public/art", { recursive: true });
 writeArt(f75Badge(), "public/art/f75-badge.gif");
-writeArt(auroraCiano(), "public/art/aurora-ciano.gif");
+writeArt(f75Shine(), "public/art/f75-shine.gif");
+writeArt(matrixCiano(), "public/art/matrix-ciano.gif");
+writeArt(vortex(), "public/art/vortex.gif");
 writeArt(pulseEq(), "public/art/pulse-eq.gif");
+writeArt(auroraCiano(), "public/art/aurora-ciano.gif");
 console.log(
   "paleta 565-exata:",
   Object.entries(PAL)

@@ -1,5 +1,6 @@
 /**
- * F75 Driver — transporte WebHID do Aula F75 Max (v7 · display 1 transferência por bloco).
+ * F75 Driver — transporte WebHID do Aula F75 Max (v8 · telinha enxuta:
+ * só o caminho garantido — upload que ativa o slot no commit).
  *
  * A v1 falhava com NotAllowedError: "Failed to write the report" porque a
  * escrita chegava ao kernel e era rejeitada — a interface errada do receiver
@@ -763,12 +764,6 @@ export class F75Driver {
     return null;
   }
 
-  /** ACK de comando do cabo: byte [3] do GET feature = 0x01 quando o firmware aceita. */
-  private static ackOk(ack: DataView | null): boolean {
-    if (!ack || ack.byteLength < 4) return false;
-    return new Uint8Array(ack.buffer, ack.byteOffset, ack.byteLength)[3] === 0x01;
-  }
-
   /* ------------------------------- papel/moeda ------------------------------ */
 
   async syncClock(date: Date = new Date()): Promise<void> {
@@ -920,6 +915,22 @@ export class F75Driver {
 
   /* ------------------------- display: slots e memória ----------------------- */
 
+  /**
+   * NOTA v8 — os métodos `activateDisplaySlot` e `eraseDisplayMemory` foram
+   * REMOVIDOS de propósito:
+   *
+   *  · "Ativar slot" (metadados 0 blocos + commit) era incerto por natureza —
+   *    o firmware pode só trocar de slot no upload, e apontar a sessão pra um
+   *    slot vazio deixava a telinha em estado inválido (piscando).
+   *  · "Apagar memória de display" (04 19 → 04 15 [8]=0x08 → zero pages →
+   *    commit) no firmware atual travava o teclado, resetava o LED e NÃO
+   *    removia o conteúdo — no nativo esses comandos só existem DENTRO do
+   *    factory reset completo, nunca isolados.
+   *
+   * Caminho garantido pra "limpar" um slot: upload de 1 frame preto
+   * (DisplayPanel.blankScreen) — sobrescreve o slot e ativa no commit.
+   */
+
   /** Páginas zeradas de 64 B — mesmo ritmo do nativo (40 ms entre writes). */
   private async zeroPages(count: number): Promise<void> {
     const zero = new Uint8Array(AULA.commandLength);
@@ -928,63 +939,6 @@ export class F75Driver {
       await sleep(40);
     }
     await this.commandExchange(zero, `zero page final ${count}/${count}`);
-  }
-
-  /**
-   * Troca o slot exibido pela telinha SEM reenviar conteúdo.
-   *
-   * O driver nativo não tem comando dedicado de "ativar slot" — ele só
-   * escreve num slot via metadados 0x04 0x72 + commit 0x04 0x02, e a telinha
-   * passa a mostrar o último slot escrito. Esta função reproduz esse caminho
-   * no modo mínimo: abrir sessão → metadados apontando pro slot com 0 blocos
-   * de payload → commit. O ACK do firmware (byte [3] do GET feature = 0x01)
-   * confirma se o comando foi aceito.
-   *
-   * Se a telinha não mudar em ~2 s, o firmware da sua unidade só troca de
-   * slot no upload — aí o caminho garantido é reenviar a imagem pro slot.
-   */
-  async activateDisplaySlot(slot: number): Promise<void> {
-    if (!Number.isInteger(slot) || slot < 1 || slot > 255) {
-      throw new F75Error("Slot precisa ser um número entre 1 e 255.");
-    }
-    if (!this.wiredCommand) throw new F75Error(this.requireMessage("wiredCommand"));
-
-    f75log.info(`📺 Ativando slot ${slot} da telinha (sem reenviar conteúdo)…`);
-    await this.commandExchange(wiredPacket(0x04, 0x18), `slot ${slot} · abrir sessão`);
-    const metadata = wiredPacket(0x04, 0x72);
-    metadata[2] = slot;
-    // [8..9] = 0 blocos — a sessão aponta pro slot sem payload de dados
-    const metaAck = await this.commandExchange(metadata, `slot ${slot} · metadados (0 blocos)`);
-    const commitAck = await this.commandExchange(wiredPacket(0x04, 0x02), `slot ${slot} · commit`);
-
-    if (F75Driver.ackOk(commitAck) || F75Driver.ackOk(metaAck)) {
-      f75log.ok(
-        `✔ Firmware aceitou a ativação do slot ${slot} (ACK 0x01). A telinha deve trocar em até ~2 s — se continuar no outro conteúdo, seu firmware só troca de slot no upload: reenvie a imagem pro slot ${slot}.`
-      );
-    } else {
-      f75log.warn(
-        `Comando aceito pelo SO, mas sem ACK de sucesso do firmware — a telinha provavelmente NÃO mudou. Caminho garantido: reenvie a imagem pro slot ${slot} (o upload ativa o slot automaticamente no commit).`
-      );
-    }
-  }
-
-  /**
-   * Apaga TODA a memória de display (todos os slots) — exatamente o bloco de
-   * limpeza do factoryReset nativo, isolado pra poder remover GIFs sem
-   * resetar keymap/lighting. Requer cabo USB-C.
-   */
-  async eraseDisplayMemory(onStage: (stage: string) => void): Promise<void> {
-    if (!this.wiredCommand || !this.wiredDisplay) {
-      throw new F75Error(this.requireMessage("wiredCommand"));
-    }
-    onStage("Apagando memória de display (todos os slots)");
-    await this.commandExchange(wiredPacket(0x04, 0x19), "display · clear memory");
-    const clearSlots = wiredPacket(0x04, 0x15);
-    clearSlots[8] = 0x08;
-    await this.commandExchange(clearSlots, "display · clear slots");
-    await this.zeroPages(8);
-    await this.commandExchange(wiredPacket(0x04, 0x02), "display · commit");
-    f75log.ok("✅ Memória de display apagada — replugue o cabo pra telinha reassumir.");
   }
 
   /* ------------------------------ factory reset ----------------------------- */

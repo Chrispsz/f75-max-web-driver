@@ -117,7 +117,7 @@ export default function F75App() {
     } catch {
       setInIframe(true);
     }
-    f75log.info("F75 Max Web Driver v7 pronto — upload de display em 1 transferência por bloco (wire nativa exata), RGB/desempenho via 2.4G ou cabo, rota validada por sonda. 100% local. Console espelhado aqui e no F12 (filtro [F75]).");
+    f75log.info("F75 Max Web Driver v8 pronto — telinha enxuta (upload que ativa o slot + tela preta), display em 1 transferência por bloco, RGB/desempenho via 2.4G ou cabo. 100% local. Console espelhado aqui e no F12 (filtro [F75]).");
     driver
       .reconnectSaved(true)
       .then((s) => {
@@ -214,8 +214,6 @@ export default function F75App() {
     });
   };
 
-  const syncClock = () => void run("clock", () => driverRef.current!.syncClock());
-
   /* --------------------------------- estado -------------------------------- */
 
   const wiredReady = status.wiredCommand && status.wiredDisplay;
@@ -286,7 +284,7 @@ export default function F75App() {
               </Chip>
               <Chip title="Nenhuma telemetria — nada sai da máquina">100% local</Chip>
             </div>
-            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v7 · upload de display 1 transferência/bloco · RGB/perf 2.4G ou cabo</p>
+            <p className="font-mono text-[10px] leading-relaxed text-zinc-600">v8 · telinha enxuta · display 1 transferência/bloco · RGB/perf 2.4G ou cabo</p>
           </div>
         </aside>
 

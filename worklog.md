@@ -344,3 +344,21 @@ Stage Summary:
 - Fix v7: 1 sendReport(0, 4096B) por bloco — wire byte-idêntica ao nativo (e melhor: nunca perde o byte que o nativo perde em blocos que começam com 0x00).
 - Piscar do auto-sync do relógio explicado: syncClock é byte-idêntico ao nativo; o repaint a cada 60s exibia a memória de display JÁ CORROMPIDA pelos uploads antigos — após "Apagar memória de display" + re-upload na v7 deve parar.
 - Plano de teste do usuário: conectar cabo → Apagar memória de display (2 cliques) → reenviar imagem/GIF → conferir telinha; se ainda corromper, mandar o log (estratégia de display aparece no log).
+---
+Task ID: 18
+Agent: Z.ai Code (main)
+Task: "isso é todo bugado e parece travar o teclado, desliga o led, não tira gif, deixa a tela toda piscando até no relógio; remove o sincronizar automático; gifs bem mais fodas" — enxugar a telinha pro caminho garantido e renovar o pack de artes.
+
+Work Log:
+- Diagnóstico dos 3 sintomas: (1) "Ativar slot" mandava metadados com 0 blocos + commit — se o firmware aceita, aponta a sessão pra um slot possivelmente vazio → estado inválido/piscando; (2) "Apagar memória de display" (04 19 → 04 15 [8]=0x08 → 8 zero pages → commit) no firmware atual trava o teclado e reseta o LED — no driver nativo esses comandos só existem DENTRO do factoryReset completo (nunca isolados); (3) auto-sync do relógio repintava a telinha a cada 60s por cima do conteúdo (piscar).
+- DisplayPanel v8: REMOVIDOS "Ativar slot", "Apagar memória de display" e o switch "auto" do relógio. NOVO botão "Tela preta no slot N" — 1 frame preto via buildDisplayStream + uploadDisplay (o ÚNICO caminho garantido do firmware: sobrescreve o slot e ativa no commit) — resolve "não tira gif" com segurança. Relógio agora é só manual ("Sincronizar agora"). Slot selector mantido com copy honesta ("o upload já ativa o slot no commit").
+- Artes com PREVIEW real: grid mostra <img> do GIF (h-14, pixelated) — 6 artes: f75-badge (INTOCADO, aprovado), f75-shine (NOVA: glint diagonal varrendo o logo + 14 partículas prateadas subindo + cantos pulsando), matrix-ciano (NOVA: 16 colunas de chuva de glifos 5×7, cabeçote com rastro WHITE→CYAN_HI→CYAN→CYAN_DIM, velocidades 16/32 células por loop = seamless), vortex (NOVA: espiral de 3 braços + anéis fluindo + núcleo pulsante + 10 faíscas em órbita), pulse-eq (melhorada: pico com janela deslizante de 10 frames que cai sozinho + marca prateada), aurora-ciano (melhorada: 4ª onda + estrela cadente 1 travessia por loop).
+- GLYPHS: adicionados dígitos 0/1/2/3/4/6/8/9 (5×7) pra chuva de glifos.
+- driver.ts v8: métodos activateDisplaySlot/eraseDisplayMemory/ackOk removidos (com NOTA v8 explicando o porquê); zeroPages mantido (factoryReset usa); header atualizado. F75App: syncClock leftover removido, startup log + rodapé v8.
+- Validação: eslint 0/0, tsc limpo em src/, HTTP 200, artes geradas (43–182 KB, paleta 565-exata); Agent Browser — Tela sem os botões removidos, 6 previews renderizando, "Tela preta no slot 1" e "Sincronizar agora" presentes, mobile 390px ok, body 844/844 (footer grudado), 0 erros de página/console.
+- Fontes nativas agora 404 no GitHub (repo saiu do ar) — protocolo preservado no worklog das tasks 15–17.
+
+Stage Summary:
+- Telinha v8 = só o caminho garantido: upload (que ativa o slot no commit) + Tela preta (apaga GIF sobrescrevendo) + relógio manual. Nada que travar o teclado, resetar o LED ou piscar a tela.
+- Pack de 6 artes com preview na UI, loops perfeitos e paleta RGB565-exata; badge aprovado mantido byte a byte.
+- Recuperação do estado atual da telinha do usuário: enviar qualquer arte de novo (upload v7+ sobrescreve a memória com dados limpos) ou Tela preta.
