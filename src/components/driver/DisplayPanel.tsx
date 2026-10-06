@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Eraser, Image as ImageIcon, Loader2, Monitor, Square, Sparkles, Upload, X } from "lucide-react";
+import { Clock, Eraser, Image as ImageIcon, Loader2, Monitor, Square, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -13,7 +13,6 @@ import {
   decodeAnimatedGif,
   decodeStillImage,
   decodeFrameToImageData,
-  generateAnimation,
   type DisplayFrame,
   type EncodedDisplayStream,
   type FitMode,
@@ -31,6 +30,7 @@ const READY_ARTS = [
   { file: "/art/f75-shine.gif", name: "F75 shine", desc: "logo prata + brilho ciano" },
   { file: "/art/matrix-ciano.gif", name: "Matrix ciano", desc: "chuva de glifos" },
   { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras + pico caindo" },
+  { file: "/art/radar-ciano.gif", name: "Radar", desc: "varredura + blips" },
 ] as const;
 
 export function DisplayPanel({
@@ -133,14 +133,6 @@ export function DisplayPanel({
     const current = preparedRef.current;
     if (current?.file) void run("prepare", () => prepare(current.file!, newFit));
   };
-
-  const handleGenerate = (kind: "bounce" | "plasma") =>
-    void run("generate", async () => {
-      const frames = generateAnimation(kind, 45);
-      const stream = buildDisplayStream(frames, "stretch");
-      f75log.ok(`Animação gerada (${kind}): ${stream.frameCount} frames · ${stream.chunkCount} blocos · 15 fps · loop perfeito`);
-      setPrepared({ stream, frames, fileName: kind === "bounce" ? "bola-ciano (gerada)" : "plasma-gelo (gerada)", file: null });
-    });
 
   /** Baixa uma arte do pack (public/art) e roda o MESMO pipeline do upload. */
   const loadReadyArt = (art: (typeof READY_ARTS)[number]) =>
@@ -281,31 +273,22 @@ export function DisplayPanel({
                 </label>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => handleGenerate("bounce")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-white/[0.1] bg-white/[0.03] text-xs text-zinc-300 hover:bg-white/[0.08]">
-                  <Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Gerar: bola ciano
-                </Button>
-                <Button onClick={() => handleGenerate("plasma")} disabled={busy !== null} variant="outline" size="sm" className="h-8 gap-1.5 border-white/[0.1] bg-white/[0.03] text-xs text-zinc-300 hover:bg-white/[0.08]">
-                  <Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Gerar: plasma gelo
-                </Button>
-              </div>
-
               <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
                 <FieldLabel>Artes prontas · 128×128 · ciano/branco/cinza · loop perfeito</FieldLabel>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {READY_ARTS.map((a) => (
                     <button
                       key={a.file}
                       type="button"
                       disabled={busy !== null}
                       onClick={() => loadReadyArt(a)}
-                      className="flex items-center gap-2.5 rounded-md border border-white/[0.07] bg-white/[0.03] p-2 text-left transition-colors hover:border-white/[0.16] hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="group flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.03] p-2.5 text-left transition-colors hover:border-cyan-300/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <img
                         src={a.file}
                         alt={`Prévia da arte ${a.name}`}
                         loading="lazy"
-                        className="h-14 w-14 shrink-0 rounded border border-white/[0.08] bg-black [image-rendering:pixelated]"
+                        className="h-14 w-14 shrink-0 rounded-md border border-white/[0.08] bg-black [image-rendering:pixelated] transition-shadow group-hover:shadow-[0_0_12px_rgba(65,232,255,0.18)]"
                       />
                       <span className="min-w-0">
                         <span className="block truncate text-xs font-medium text-zinc-200">{a.name}</span>

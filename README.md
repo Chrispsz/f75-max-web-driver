@@ -21,7 +21,7 @@ Driver de navegador que fala **direto com o firmware** do teclado — o mesmo pr
 | **Dispositivo** | Conexão via cabo USB-C e/ou receiver 2.4G, sondagem de rota de comando, bateria em tempo real, restauração de fábrica |
 | **Iluminação** | 20 efeitos do firmware, cor fixa + custom, brilho/velocidade 1–5, direção, modo Colorful |
 | **Desempenho** | Latência de polling N1–N4, suspensão automática, modo jogo (trava Win — comportamento do firmware) |
-| **Tela** | Upload de GIF/PNG/JPG/WebP pro display 128×128 (RGB565), 3 artes prontas com loop perfeito, animações geradas, tela preta, relógio manual |
+| **Tela** | Upload de GIF/PNG/JPG/WebP pro display 128×128 (RGB565), 4 artes prontas com loop perfeito (F75 shine, Matrix ciano, Pulso EQ, Radar), tela preta, relógio manual |
 | **Teclas** | Teste de teclas em tempo real com histórico |
 | **Sistema** | Diagnóstico do driver e console de pacotes TX/RX com hexdump — o mesmo conteúdo do F12 |
 
@@ -62,7 +62,7 @@ Abra a página, clique em **Conectar** e marque **todas** as entradas "Aula F75 
 
 ### Artes do display
 
-Os GIFs do pack ficam em `public/art/` e são gerados com paleta exata do espectro RGB565 (zero banding) e loop matematicamente perfeito:
+Os GIFs do pack ficam em `public/art/` — paleta exata do espectro RGB565 (zero banding), loop matematicamente perfeito:
 
 ```bash
 bun scripts/gen-art.mjs

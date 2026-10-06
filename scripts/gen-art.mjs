@@ -8,7 +8,7 @@
  *
  * v8: F75 shine (badge premium: glint varrendo o logo + partículas),
  * Matrix ciano (chuva de glifos), Pulso EQ com pico que cai,
- * Aurora com estrela cadente.
+ * Radar (varredura com rastro e blips — decay angular = loop perfeito).
  *
  * Uso: bun scripts/gen-art.mjs  (saída em public/art/)
  */
@@ -337,6 +337,118 @@ function pulseEq() {
   return out;
 }
 
+/* ------------------------ 4. Radar (72 frames) ---------------------------- */
+function radarCiano() {
+  const FRAMES = 72;
+  const STEP = 360 / FRAMES; // 5°/frame — beam dá exatamente 1 volta no loop
+  const CX = 63.5;
+  const CY = 63.5;
+  const RMAX = 60;
+  const TRAIL_DEG = 58; // rastro do beam
+  const DECAY_DEG = 120; // blip apaga 120° depois do beam passar (= 24 frames)
+
+  // blips em ângulos múltiplos de STEP → decay é idêntico no frame 0 e no frame N
+  const blips = [
+    { deg: 40, r: 46 },
+    { deg: 95, r: 30 },
+    { deg: 150, r: 52 },
+    { deg: 210, r: 38 },
+    { deg: 265, r: 49 },
+    { deg: 320, r: 27 },
+  ];
+
+  const out = [];
+  for (let f = 0; f < FRAMES; f++) {
+    const beamDeg = f * STEP;
+    const fr = newFrame();
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) px(fr, x, y, "BG");
+
+    // raios de 30° (ticks externos) + cruz principal
+    for (let k = 0; k < 12; k++) {
+      const a = (k * 30 * Math.PI) / 180;
+      const major = k % 3 === 0;
+      const r0 = major ? 52 : 56;
+      for (let t = r0; t <= RMAX; t += 0.5) {
+        px(fr, Math.round(CX + Math.cos(a) * t), Math.round(CY + Math.sin(a) * t), major ? "GRAY2" : "GRAY1");
+      }
+    }
+    for (let t = 8; t <= RMAX; t += 0.5) {
+      px(fr, Math.round(CX + t), Math.round(CY), "GRAY1");
+      px(fr, Math.round(CX - t), Math.round(CY), "GRAY1");
+      px(fr, Math.round(CX), Math.round(CY + t), "GRAY1");
+      px(fr, Math.round(CX), Math.round(CY - t), "GRAY1");
+    }
+
+    // anéis
+    for (const rr of [20, 34, 48, RMAX]) {
+      for (let a = 0; a < 360; a += 0.35) {
+        px(fr, Math.round(CX + Math.cos((a * Math.PI) / 180) * rr), Math.round(CY + Math.sin((a * Math.PI) / 180) * rr), rr === RMAX ? "GRAY2" : "GRAY1");
+      }
+    }
+
+    // varredura: rastro + beam, por pixel do disco
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const dx = x - CX;
+        const dy = y - CY;
+        const r = Math.hypot(dx, dy);
+        if (r > RMAX || r < 2) continue;
+        const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const aDeg = (ang + 360) % 360;
+        const d = (beamDeg - aDeg + 720) % 360; // distância angular atrás do beam
+        if (d >= TRAIL_DEG) continue;
+        let name;
+        if (d < 2) name = "CYAN_HI";
+        else if (d < 14) name = "CYAN";
+        else if (d < 36) name = "CYAN_DIM";
+        else name = "BG2";
+        px(fr, x, y, name);
+      }
+    }
+
+    // aresta de ataque do beam (linha nítida do centro à borda)
+    const ba = (beamDeg * Math.PI) / 180;
+    for (let t = 2; t <= RMAX; t += 0.4) {
+      const bx = Math.round(CX + Math.cos(ba) * t);
+      const by = Math.round(CY + Math.sin(ba) * t);
+      px(fr, bx, by, t > RMAX * 0.8 ? "WHITE" : "CYAN_HI");
+      px(fr, bx + 1, by, "CYAN");
+      px(fr, bx, by + 1, "CYAN");
+    }
+
+    // blips: acendem quando o beam passa e decaem (branco → ciano → some)
+    for (const b of blips) {
+      const d = (beamDeg - b.deg + 720) % 360;
+      if (d > DECAY_DEG) continue;
+      const bx = Math.round(CX + Math.cos((b.deg * Math.PI) / 180) * b.r);
+      const by = Math.round(CY + Math.sin((b.deg * Math.PI) / 180) * b.r);
+      let name;
+      if (d < 3) name = "WHITE";
+      else if (d < 30) name = "CYAN_HI";
+      else if (d < 70) name = "CYAN";
+      else name = "CYAN_DIM";
+      px(fr, bx, by, name);
+      px(fr, bx + 1, by, d < 30 ? "CYAN" : "CYAN_DIM");
+      px(fr, bx, by + 1, d < 30 ? "CYAN" : "CYAN_DIM");
+      if (d < 3) {
+        px(fr, bx - 1, by, "CYAN_HI");
+        px(fr, bx, by - 1, "CYAN_HI");
+      }
+    }
+
+    // hub central + assinatura
+    px(fr, 63, 63, "GRAY3");
+    px(fr, 64, 63, "GRAY3");
+    px(fr, 63, 64, "GRAY3");
+    px(fr, 64, 64, "CYAN");
+    drawText(fr, "F75", 5, 4, 1, "GRAY2");
+
+    out.push(fr);
+  }
+  return out;
+}
+
 /* ------------------------------- encoder ---------------------------------- */
 const DELAY = 66; // ms → vira 7 centiseconds no GIF ≈ 14 fps (sweet spot do device)
 
@@ -360,6 +472,7 @@ mkdirSync("public/art", { recursive: true });
 writeArt(f75Shine(), "public/art/f75-shine.gif");
 writeArt(matrixCiano(), "public/art/matrix-ciano.gif");
 writeArt(pulseEq(), "public/art/pulse-eq.gif");
+writeArt(radarCiano(), "public/art/radar-ciano.gif");
 console.log(
   "paleta 565-exata:",
   Object.entries(PAL)
