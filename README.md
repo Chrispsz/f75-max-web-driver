@@ -2,47 +2,49 @@
 
 <div align="center">
 
-**Driver WebHID para o Epomaker x Aula F75 Max**
+**WebHID driver for the Epomaker x Aula F75 Max keyboard**
 
-Iluminação · Desempenho · Display 128×128 · Bateria · Console de pacotes
+Lighting · Performance · 128×128 Display · Battery · Packet console
 
-`100% local` · `sem instalação` · `código aberto`
+`100% local` · `no installation` · `open source`
+
+**[Readme em português](README.pt-BR.md)**
 
 </div>
 
 ---
 
-Driver de navegador que fala **direto com o firmware** do teclado — o mesmo protocolo do driver nativo, portado byte a byte pra WebHID. Sem app, sem instalador, sem telemetria: abra no Chrome, conecte o cabo, pronto.
+A browser driver that talks **straight to the firmware** — the same protocol as the native desktop driver, ported byte-for-byte to WebHID. No app, no installer, no telemetry: open Chrome, plug the cable, done.
 
-## Recursos
+## Features
 
-| Seção | O que faz |
+| Section | What it does |
 |---|---|
-| **Dispositivo** | Conexão via cabo USB-C e/ou receiver 2.4G, sondagem de rota de comando, bateria em tempo real, restauração de fábrica |
-| **Iluminação** | 20 efeitos do firmware, cor fixa + custom, brilho/velocidade 1–5, direção, modo Colorful |
-| **Desempenho** | Latência de polling N1–N4, suspensão automática, modo jogo (trava Win — comportamento do firmware) |
-| **Tela** | Upload de GIF/PNG/JPG/WebP pro display 128×128 (RGB565), 4 artes prontas com loop perfeito (F75 shine, Matrix ciano, Pulso EQ, Radar), tela preta, relógio manual |
-| **Teclas** | Teste de teclas em tempo real com histórico |
-| **Sistema** | Diagnóstico do driver e console de pacotes TX/RX com hexdump — o mesmo conteúdo do F12 |
+| **Device** | USB-C cable and/or 2.4G receiver connection, command route probing, real-time battery, factory reset |
+| **Lighting** | All 20 firmware effects, fixed + custom color, brightness/speed 1–5, direction, Colorful mode |
+| **Performance** | Polling latency N1–N4, auto sleep, game mode (locks Win key — firmware behavior) |
+| **Display** | Upload GIF/PNG/JPG/WebP to the 128×128 display (RGB565), 4 ready-made loop-perfect animations (F75 shine, Matrix cyan, Pulse EQ, Tetris), black screen, manual clock sync |
+| **Keys** | Real-time key tester with history |
+| **System** | Driver diagnostics and TX/RX packet console with full hexdump — same content as the browser F12 console |
 
-### Destaques
+### Highlights
 
-- **Protocolo nativo portado** — canais `0xFF13` (comando), `0xFF68` (display) e `0xFF59/0xFF60` (receiver 2.4G), com checksum e rotas idênticas ao driver de desktop.
-- **Telinha à prova de firmware** — upload usa o único fluxo garantido (sessão → metadados → blocos de 4 KB → commit, que já ativa o slot). "Tela preta" apaga qualquer GIF sobrescrevendo o slot pelo mesmo caminho.
-- **Prévia fiel** — o simulador do display decodifica de volta o RGB565 que o firmware vai receber, no fps exato do device.
-- **Console transparente** — cada pacote enviado/recebido aparece com hexdump completo no app e no console do navegador (filtro `[F75]`).
+- **Native protocol ported** — channels `0xFF13` (command), `0xFF68` (display) and `0xFF59/0xFF60` (2.4G receiver), with checksums and routes identical to the desktop driver.
+- **Firmware-proof mini screen** — upload uses the only guaranteed flow (session → metadata → 4 KB blocks → commit, which already activates the slot). "Black screen" erases any GIF by overwriting the slot through the same path.
+- **Faithful simulator** — the built-in 128×128 simulator decodes back the exact RGB565 frames the firmware will receive, at the device's real fps.
+- **Transparent console** — every packet sent/received shows up with a complete hexdump in the app and in the browser console (`[F75]` filter).
 
-## Requisitos
+## Requirements
 
-- **Chromium** (Chrome, Edge, Brave, Opera, Chromium) — WebHID não existe no Firefox/Safari
-- Teclado Epomaker x Aula F75 Max
+- **Chromium** (Chrome, Edge, Brave, Opera, Chromium) — WebHID does not exist in Firefox/Safari
+- Epomaker x Aula F75 Max keyboard
 
 ### Linux (udev)
 
-Crie `/etc/udev/rules.d/60-aula-f75-max.rules`:
+Create `/etc/udev/rules.d/60-aula-f75-max.rules`:
 
 ```
-# Aula F75 Max — cabo (vendor 0x3554, product 0xf75a) e receiver 2.4G
+# Aula F75 Max — cable (vendor 0x3554, product 0xf75a) and 2.4G receiver
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f75a", MODE="0660", TAG+="uaccess"
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f790", MODE="0660", TAG+="uaccess"
 ```
@@ -51,28 +53,28 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f790", MODE="06
 sudo udevadm control --reload && sudo udevadm trigger
 ```
 
-## Rodando
+## Running
 
 ```bash
 bun install
 bun run dev
 ```
 
-Abra a página, clique em **Conectar** e marque **todas** as entradas "Aula F75 Max" no seletor do navegador.
+Open the page, click **Conectar** (Connect) and check **all** "Aula F75 Max" entries in the browser device picker.
 
-### Artes do display
+### Display art pack
 
-Os GIFs do pack ficam em `public/art/` — paleta exata do espectro RGB565 (zero banding), loop matematicamente perfeito:
+The GIF pack lives in `public/art/` — exact RGB565 spectrum palette (zero banding), mathematically perfect loops:
 
 ```bash
 bun scripts/gen-art.mjs
 ```
 
-## Privacidade
+## Privacy
 
-Nada sai da máquina: sem servidor, sem analytics, sem storage remoto. As preferências ficam no `localStorage` do navegador e a comunicação é exclusivamente USB/HID local.
+Nothing leaves your machine: no server, no analytics, no remote storage. Preferences live in the browser's `localStorage` and communication is exclusively local USB/HID.
 
-## Avisos
+## Notices
 
-- Projeto da comunidade, sem afiliação com Epomaker/Aula. Use por sua conta e risco — a restauração de fábrica apaga display, keymap, macros e lighting.
-- O display usa o canal `0xFF68`, disponível **apenas com cabo** (o receiver 2.4G não expõe esse canal).
+- Community project, not affiliated with Epomaker/Aula. Use at your own risk — factory reset wipes display, keymap, macros and lighting.
+- The display uses channel `0xFF68`, available **on cable only** (the 2.4G receiver does not expose this channel).

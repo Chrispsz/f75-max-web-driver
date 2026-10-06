@@ -29,8 +29,8 @@ interface Prepared {
 const READY_ARTS = [
   { file: "/art/f75-shine.gif", name: "F75 shine", desc: "logo prata + brilho ciano" },
   { file: "/art/matrix-ciano.gif", name: "Matrix ciano", desc: "chuva de glifos" },
-  { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras + pico caindo" },
-  { file: "/art/radar-ciano.gif", name: "Radar", desc: "varredura + blips" },
+  { file: "/art/pulse-eq.gif", name: "Pulso EQ", desc: "barras + oscilloscope" },
+  { file: "/art/tetris-ciano.gif", name: "Tetris", desc: "peças caem + linha some" },
 ] as const;
 
 export function DisplayPanel({

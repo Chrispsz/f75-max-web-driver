@@ -7,8 +7,8 @@
  * Loop perfeito: todas as fases usam períodos inteiros sobre o total de frames.
  *
  * v8: F75 shine (badge premium: glint varrendo o logo + partículas),
- * Matrix ciano (chuva de glifos), Pulso EQ com pico que cai,
- * Radar (varredura com rastro e blips — decay angular = loop perfeito).
+ * Matrix ciano (chuva de glifos), Pulso EQ com oscilloscope + reflexo espelhado,
+ * Tetris (peças caem, linha completa com flash + partículas + "+100").
  *
  * Uso: bun scripts/gen-art.mjs  (saída em public/art/)
  */
@@ -70,6 +70,7 @@ const GLYPHS = {
   "6": [0b01110, 0b10000, 0b11110, 0b10001, 0b10001, 0b10001, 0b01110],
   "8": [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
   "9": [0b11110, 0b10001, 0b10001, 0b11110, 0b00001, 0b00001, 0b11110],
+  "+": [0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0b00000, 0b00000],
 };
 const GLYPH_KEYS = Object.keys(GLYPHS); // letras + dígitos pra chuva
 
@@ -272,8 +273,8 @@ function pulseEq() {
   const GAP = 2;
   const total = BARS * BW + (BARS - 1) * GAP; // 124
   const ox = Math.floor((W - total) / 2);
-  const BASE = 108; // linha de base
-  const MAXH = 92;
+  const BASE = 102; // linha de base (fundo das barras)
+  const MAXH = 76;
   const PEAK_WIN = 10; // janela do pico (frames) — cai sozinho depois
 
   // alturas por barra/frame (ciclos inteiros = seamless)
@@ -300,8 +301,19 @@ function pulseEq() {
         if (x % 16 === 0) px(fr, x, y, "BG2");
         else px(fr, x, y, "BG");
       }
-    // topo: título "F75" minúsculo
-    drawText(fr, "F75", ox, 6, 1, "GRAY3");
+    // topo: título + oscilloscope com ponto brilhante correndo (2 voltas = seamless)
+    drawText(fr, "F75", 6, 5, 1, "GRAY2");
+    for (let x = 0; x < W; x++) {
+      const y = 16 + Math.round(4 * Math.sin(x * 0.18 + t * TAU * 2));
+      px(fr, x, y, "CYAN_DIM");
+      px(fr, x, y - 1, "BG2");
+    }
+    const xs = Math.floor(t * W) % W;
+    for (let dx = -1; dx <= 1; dx++) {
+      const xx = (xs + dx + W) % W;
+      const yy = 16 + Math.round(4 * Math.sin(xx * 0.18 + t * TAU * 2));
+      px(fr, xx, yy, dx === 0 ? "WHITE" : "CYAN_HI");
+    }
 
     for (let b = 0; b < BARS; b++) {
       const h = heights[f][b];
@@ -325,124 +337,127 @@ function pulseEq() {
         for (let x = bx + 1; x < bx + BW - 1; x++) px(fr, x, py, "SILVER");
         for (let x = bx + 2; x < bx + BW - 2; x++) px(fr, x, py + 1, "GRAY3");
       }
+      // reflexo espelhado (35% da altura, apagando rápido)
+      const hRef = Math.min(22, Math.round(h * 0.35));
+      for (let i = 0; i < hRef; i++) {
+        const y = BASE + 2 + i;
+        const name = i < 2 ? "CYAN_DIM" : i < hRef * 0.6 ? "BG2" : "PANEL";
+        for (let x = bx + 1; x < bx + BW - 1; x++) px(fr, x, y, name);
+      }
     }
-    // linha de base + reflexo apagado
-    for (let x = ox - 2; x < ox + total + 2; x++) {
-      px(fr, x, BASE + 1, "GRAY2");
-      px(fr, x, BASE + 3, "GRAY1");
-      px(fr, x, BASE + 5, "BG2");
-    }
+    // linha de base (eixo do espelho)
+    for (let x = ox - 2; x < ox + total + 2; x++) px(fr, x, BASE + 1, "GRAY1");
     out.push(fr);
   }
   return out;
 }
 
-/* ------------------------ 4. Radar (72 frames) ---------------------------- */
-function radarCiano() {
+/* ------------------------ 4. Tetris (72 frames) --------------------------- */
+function tetrisCiano() {
   const FRAMES = 72;
-  const STEP = 360 / FRAMES; // 5°/frame — beam dá exatamente 1 volta no loop
-  const CX = 63.5;
-  const CY = 63.5;
-  const RMAX = 60;
-  const TRAIL_DEG = 58; // rastro do beam
-  const DECAY_DEG = 120; // blip apaga 120° depois do beam passar (= 24 frames)
+  const CELL = 8;
+  const COLS = 16;
+  const ROWS = 16;
+  const FALL = 13; // frames de queda (spawn → travamento)
+  const GAP = 14; // intervalo entre peças
+  const LOCK_LAST = 3 * GAP + FALL; // 55 — linha fica completa
+  const FLASH0 = LOCK_LAST + 1; // 56..59: pisca branco/ciano
+  const DISS0 = FLASH0 + 4; // 60..66: partículas + "+100"
+  const BRAND0 = DISS0 + 7; // 67..70: assinatura F75 MAX
+  // f71 = poço vazio == f0 → loop perfeito
 
-  // blips em ângulos múltiplos de STEP → decay é idêntico no frame 0 e no frame N
-  const blips = [
-    { deg: 40, r: 46 },
-    { deg: 95, r: 30 },
-    { deg: 150, r: 52 },
-    { deg: 210, r: 38 },
-    { deg: 265, r: 49 },
-    { deg: 320, r: 27 },
-  ];
+  // 4 peças I horizontais preenchem a linha 15 de forma exata
+  const pieces = [0, 1, 2, 3].map((k) => ({ c0: k * 4, S: k * GAP }));
+
+  // partículas determinísticas do clear (vx por célula)
+  const rnd = mulberry(0x7e71);
+  const vx = Array.from({ length: COLS }, () => Math.floor(rnd() * 3) - 1);
+
+  /** Bloco 8×8: preenchimento + highlight topo/esq + sombra baixo/dir. */
+  const block = (fr, cx, cy, fill, hi, lo) => {
+    const x0 = cx * CELL + 1;
+    const y0 = cy * CELL + 1;
+    for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) px(fr, x0 + x, y0 + y, fill);
+    for (let x = 0; x < 6; x++) {
+      px(fr, x0 + x, y0, hi);
+      px(fr, x0 + x, y0 + 5, lo);
+    }
+    for (let y = 1; y < 5; y++) {
+      px(fr, x0, y0 + y, hi);
+      px(fr, x0 + 5, y0 + y, lo);
+    }
+  };
 
   const out = [];
   for (let f = 0; f < FRAMES; f++) {
-    const beamDeg = f * STEP;
     const fr = newFrame();
+
+    // poço: grade 8×8 apagada
     for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) px(fr, x, y, "BG");
+      for (let x = 0; x < W; x++) px(fr, x, y, x % CELL === 0 || y % CELL === 0 ? "BG2" : "BG");
 
-    // raios de 30° (ticks externos) + cruz principal
-    for (let k = 0; k < 12; k++) {
-      const a = (k * 30 * Math.PI) / 180;
-      const major = k % 3 === 0;
-      const r0 = major ? 52 : 56;
-      for (let t = r0; t <= RMAX; t += 0.5) {
-        px(fr, Math.round(CX + Math.cos(a) * t), Math.round(CY + Math.sin(a) * t), major ? "GRAY2" : "GRAY1");
+    // peças: ghost, queda, travamento (cinza congelado)
+    for (const p of pieces) {
+      const rel = f - p.S;
+      if (rel < 0) continue;
+      const lockF = p.S + FALL;
+      const locked = f > lockF && f <= LOCK_LAST + 4;
+      if (rel > 0 && f <= lockF) {
+        // ghost: contorno pontilhado na linha de destino
+        const x0 = p.c0 * CELL;
+        const x1 = (p.c0 + 4) * CELL - 1;
+        for (let x = x0; x <= x1; x++) {
+          if (x % 2 === 0) {
+            px(fr, x, 15 * CELL, "GRAY2");
+            px(fr, x, 15 * CELL + 7, "GRAY2");
+          }
+        }
+        for (let y = 15 * CELL; y <= 15 * CELL + 7; y += 2) {
+          px(fr, x0, y, "GRAY2");
+          px(fr, x1, y, "GRAY2");
+        }
       }
-    }
-    for (let t = 8; t <= RMAX; t += 0.5) {
-      px(fr, Math.round(CX + t), Math.round(CY), "GRAY1");
-      px(fr, Math.round(CX - t), Math.round(CY), "GRAY1");
-      px(fr, Math.round(CX), Math.round(CY + t), "GRAY1");
-      px(fr, Math.round(CX), Math.round(CY - t), "GRAY1");
-    }
-
-    // anéis
-    for (const rr of [20, 34, 48, RMAX]) {
-      for (let a = 0; a < 360; a += 0.35) {
-        px(fr, Math.round(CX + Math.cos((a * Math.PI) / 180) * rr), Math.round(CY + Math.sin((a * Math.PI) / 180) * rr), rr === RMAX ? "GRAY2" : "GRAY1");
-      }
-    }
-
-    // varredura: rastro + beam, por pixel do disco
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const dx = x - CX;
-        const dy = y - CY;
-        const r = Math.hypot(dx, dy);
-        if (r > RMAX || r < 2) continue;
-        const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
-        const aDeg = (ang + 360) % 360;
-        const d = (beamDeg - aDeg + 720) % 360; // distância angular atrás do beam
-        if (d >= TRAIL_DEG) continue;
-        let name;
-        if (d < 2) name = "CYAN_HI";
-        else if (d < 14) name = "CYAN";
-        else if (d < 36) name = "CYAN_DIM";
-        else name = "BG2";
-        px(fr, x, y, name);
+      if (f <= lockF) {
+        const row = Math.min(ROWS - 1, Math.floor((rel * ROWS) / FALL) - 1);
+        if (row >= 0) {
+          if (f === lockF) {
+            for (let i = 0; i < 4; i++) block(fr, p.c0 + i, 15, "CYAN", "WHITE", "CYAN_HI"); // hot lock
+          } else {
+            for (let i = 0; i < 4; i++) block(fr, p.c0 + i, row, "CYAN", "CYAN_HI", "CYAN_DIM");
+          }
+        }
+      } else if (locked) {
+        for (let i = 0; i < 4; i++) block(fr, p.c0 + i, 15, "GRAY3", "SILVER", "GRAY1");
       }
     }
 
-    // aresta de ataque do beam (linha nítida do centro à borda)
-    const ba = (beamDeg * Math.PI) / 180;
-    for (let t = 2; t <= RMAX; t += 0.4) {
-      const bx = Math.round(CX + Math.cos(ba) * t);
-      const by = Math.round(CY + Math.sin(ba) * t);
-      px(fr, bx, by, t > RMAX * 0.8 ? "WHITE" : "CYAN_HI");
-      px(fr, bx + 1, by, "CYAN");
-      px(fr, bx, by + 1, "CYAN");
+    // flash da linha completa
+    if (f >= FLASH0 && f < DISS0) {
+      const hot = (f - FLASH0) % 2 === 0;
+      for (let c = 0; c < COLS; c++) block(fr, c, 15, hot ? "WHITE" : "CYAN_HI", "WHITE", "CYAN_HI");
+      // popup de score subindo
+      const t = f - FLASH0;
+      const sy = 62 - t * 3;
+      drawText(fr, "+100", 41, sy, 2, t < 2 ? "WHITE" : t < 3 ? "SILVER" : "GRAY3");
     }
 
-    // blips: acendem quando o beam passa e decaem (branco → ciano → some)
-    for (const b of blips) {
-      const d = (beamDeg - b.deg + 720) % 360;
-      if (d > DECAY_DEG) continue;
-      const bx = Math.round(CX + Math.cos((b.deg * Math.PI) / 180) * b.r);
-      const by = Math.round(CY + Math.sin((b.deg * Math.PI) / 180) * b.r);
-      let name;
-      if (d < 3) name = "WHITE";
-      else if (d < 30) name = "CYAN_HI";
-      else if (d < 70) name = "CYAN";
-      else name = "CYAN_DIM";
-      px(fr, bx, by, name);
-      px(fr, bx + 1, by, d < 30 ? "CYAN" : "CYAN_DIM");
-      px(fr, bx, by + 1, d < 30 ? "CYAN" : "CYAN_DIM");
-      if (d < 3) {
-        px(fr, bx - 1, by, "CYAN_HI");
-        px(fr, bx, by - 1, "CYAN_HI");
+    // dissolução: partículas em arco + popup finalizando
+    if (f >= DISS0 && f < BRAND0) {
+      const t = f - DISS0;
+      for (let i = 0; i < COLS; i++) {
+        const x = i * CELL + 4 + vx[i] * 3 * t;
+        const y = 124 - 14 * t + 2.4 * t * t;
+        if (y < H && x >= 0 && x < W) px(fr, Math.round(x), Math.round(y), t < 3 ? "CYAN_HI" : t < 5 ? "CYAN" : "CYAN_DIM");
       }
+      const sy = 53 - t * 2;
+      if (sy > 20) drawText(fr, "+100", 41, sy, 2, t < 2 ? "SILVER" : "GRAY3");
     }
 
-    // hub central + assinatura
-    px(fr, 63, 63, "GRAY3");
-    px(fr, 64, 63, "GRAY3");
-    px(fr, 63, 64, "GRAY3");
-    px(fr, 64, 64, "CYAN");
-    drawText(fr, "F75", 5, 4, 1, "GRAY2");
+    // assinatura no beat final
+    if (f >= BRAND0 && f <= BRAND0 + 3) {
+      drawText(fr, "F75 MAX", 43, 60, 1, "GRAY2");
+      for (let x = 44; x < 84; x += 2) px(fr, x, 69, "GRAY1");
+    }
 
     out.push(fr);
   }
@@ -472,7 +487,7 @@ mkdirSync("public/art", { recursive: true });
 writeArt(f75Shine(), "public/art/f75-shine.gif");
 writeArt(matrixCiano(), "public/art/matrix-ciano.gif");
 writeArt(pulseEq(), "public/art/pulse-eq.gif");
-writeArt(radarCiano(), "public/art/radar-ciano.gif");
+writeArt(tetrisCiano(), "public/art/tetris-ciano.gif");
 console.log(
   "paleta 565-exata:",
   Object.entries(PAL)
